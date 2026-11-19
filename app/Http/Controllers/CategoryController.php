@@ -16,7 +16,8 @@ class CategoryController extends Controller
     public function index(): View
     {
         $categories = Category::withCount('products')
-            ->orderBy('category_name')
+            ->orderBy('sort_order')
+            ->orderBy('name')
             ->get();
 
         return view('categories.index', compact('categories'));
@@ -28,10 +29,14 @@ class CategoryController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'category_name' => ['required', 'string', 'max:100', Rule::unique(Category::class, 'category_name')],
+            'category_name' => ['required', 'string', 'max:100', Rule::unique(Category::class, 'name')],
         ]);
 
-        Category::create($validated);
+        $maxOrder = Category::max('sort_order') ?? 0;
+        Category::create([
+            'name'       => trim($validated['category_name']),
+            'sort_order' => $maxOrder + 1,
+        ]);
 
         return redirect()->route('categories.index')
             ->with('success', "Category \"{$validated['category_name']}\" added successfully.");
@@ -47,14 +52,16 @@ class CategoryController extends Controller
                 'required', 
                 'string', 
                 'max:100', 
-                Rule::unique(Category::class, 'category_name')->ignore($category->category_id, 'category_id')
+                Rule::unique(Category::class, 'name')->ignore($category->id, 'id')
             ],
         ]);
 
-        $category->update($validated);
+        $category->update([
+            'name' => trim($validated['category_name']),
+        ]);
 
         return redirect()->route('categories.index')
-            ->with('success', "Category updated to \"{$category->category_name}\".");
+            ->with('success', "Category updated to \"{$category->name}\".");
     }
 
     /**
@@ -64,14 +71,13 @@ class CategoryController extends Controller
     {
         if ($category->products()->exists()) {
             $count = $category->products()->count();
-            return back()->with('warning', "Cannot delete category \"{$category->category_name}\" because it contains {$count} product(s). Please reassign or delete those products first.");
+            return back()->with('warning', "Cannot delete category \"{$category->name}\" because it contains {$count} menu item(s). Please reassign or delete those items first.");
         }
 
-        $name = $category->category_name;
+        $name = $category->name;
         $category->delete();
 
         return redirect()->route('categories.index')
             ->with('success', "Category \"{$name}\" was deleted successfully.");
     }
 }
-

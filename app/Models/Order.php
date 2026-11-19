@@ -12,47 +12,103 @@ class Order extends Model
 {
     use HasFactory;
 
-    protected $table = 'canteen_pos.orders';
+    /**
+     * Centralized canteen sales table
+     */
+    protected $table = 'canteen.sales';
 
-    protected $primaryKey = 'order_id';
+    protected $primaryKey = 'id';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
+    /**
+     * 'total' is a PostgreSQL GENERATED column (subtotal - discount)
+     * Never insert or update 'total' directly.
+     */
     protected $fillable = [
-        'idno',
-        'customer_name',
-        'order_date',
+        'receipt_no',
+        'shift_id',
+        'cashier_id',
+        'order_type',
+        'subtotal',
+        'discount',
         'status',
-        'total_amount',
+        'notes',
+        'sold_at',
+        'voided_by',
+        'voided_at',
+        'void_reason',
     ];
 
     protected $casts = [
-        'total_amount' => 'decimal:2',
-        'order_date'   => 'datetime',
+        'subtotal'  => 'decimal:2',
+        'discount'  => 'decimal:2',
+        'total'     => 'decimal:2',
+        'sold_at'   => 'datetime',
+        'voided_at' => 'datetime',
     ];
 
     /**
-     * Order belongs to a User (Cashier) via idno
+     * Backward-compatible order_id accessor
+     */
+    public function getOrderIdAttribute(): int
+    {
+        return $this->id;
+    }
+
+    /**
+     * Backward-compatible total_amount accessor
+     */
+    public function getTotalAmountAttribute()
+    {
+        return $this->total ?? ($this->subtotal - $this->discount);
+    }
+
+    /**
+     * Backward-compatible order_date accessor
+     */
+    public function getOrderDateAttribute()
+    {
+        return $this->sold_at;
+    }
+
+    /**
+     * Backward-compatible customer_name accessor
+     */
+    public function getCustomerNameAttribute(): string
+    {
+        return $this->notes ?: ($this->order_type === 'dine_in' ? 'Dine In' : 'Take Out');
+    }
+
+    /**
+     * Sale belongs to Cashier (canteen.users)
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'idno', 'idno');
+        return $this->belongsTo(User::class, 'cashier_id', 'id');
     }
 
     /**
-     * Order has many OrderItems
+     * Sale belongs to Shift (canteen.shifts)
+     */
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class, 'shift_id', 'id');
+    }
+
+    /**
+     * Sale has many Sale Items
      */
     public function orderItems(): HasMany
     {
-        return $this->hasMany(OrderItem::class, 'order_id', 'order_id');
+        return $this->hasMany(OrderItem::class, 'sale_id', 'id');
     }
 
     /**
-     * Order has one Payment
+     * Sale has one Payment
      */
     public function payment(): HasOne
     {
-        return $this->hasOne(Payment::class, 'order_id', 'order_id');
+        return $this->hasOne(Payment::class, 'sale_id', 'id');
     }
 }
-

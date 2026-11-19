@@ -18,19 +18,19 @@
             <a href="{{ route('receipt.show', $order->order_id) }}" class="btn btn-primary d-flex align-items-center gap-2">
                 <i class="bi bi-printer"></i> Receipt View
             </a>
-            @if ($order->status !== 'cancelled')
+            @if ($order->status !== 'cancelled' && $order->status !== 'voided')
                 <button type="button" class="btn btn-outline-primary text-danger d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#cancelDetailModal">
-                    Cancel Order
+                    Void Order
                 </button>
             @endif
         </div>
     </div>
 
-    @if ($order->status === 'cancelled')
+    @if ($order->status === 'cancelled' || $order->status === 'voided')
         <div class="alert alert-danger d-flex align-items-center gap-2 mb-4" role="alert" style="border-radius: var(--radius-md);">
             <i class="bi bi-x-octagon-fill fs-5"></i>
             <div>
-                <strong>Transaction Voided / Cancelled</strong> &mdash; This order was cancelled and its items were restored to inventory.
+                <strong>Transaction Voided</strong> &mdash; This order was voided and all items were returned to warehouse inventory.
             </div>
         </div>
     @endif
@@ -41,10 +41,10 @@
             <div class="col-sm-6 col-md-3">
                 <span class="tracking-wide-caps d-block mb-1">Status</span>
                 <div>
-                    @if ($order->status === 'paid')
-                        <span class="badge badge-success-subtle">Paid</span>
-                    @elseif ($order->status === 'cancelled')
-                        <span class="badge badge-danger-subtle">Cancelled</span>
+                    @if ($order->status === 'paid' || $order->status === 'completed')
+                        <span class="badge badge-success-subtle">Completed</span>
+                    @elseif ($order->status === 'cancelled' || $order->status === 'voided')
+                        <span class="badge badge-danger-subtle">Voided</span>
                     @else
                         <span class="badge badge-warning-subtle">{{ ucfirst($order->status) }}</span>
                     @endif
@@ -128,7 +128,7 @@
     @endif
 </div>
 
-@if ($order->status !== 'cancelled')
+@if ($order->status !== 'cancelled' && $order->status !== 'voided')
 <!-- Cancel Order Modal -->
 <div class="modal fade" id="cancelDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">

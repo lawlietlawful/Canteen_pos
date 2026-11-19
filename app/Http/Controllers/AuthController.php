@@ -48,10 +48,13 @@ class AuthController extends Controller
                 ]);
         }
 
-        // Attempt login (User model getAuthPassword maps to pwd column)
+        // Attempt login on canteen.users
         if (Auth::attempt($request->only('username', 'password'))) {
             RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
+
+            // Record last login
+            Auth::user()->update(['last_login_at' => now()]);
 
             return redirect()->intended(route('pos'))
                 ->with('success', 'Welcome back, ' . Auth::user()->name . '!');
@@ -79,34 +82,36 @@ class AuthController extends Controller
     }
 
     /**
-     * Handle cashier registration into shared app1.users table
+     * Handle cashier registration into canteen.users table
      */
     public function register(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'idno'     => ['required', 'string', 'max:50', Rule::unique(User::class, 'idno')],
             'username' => ['required', 'string', 'max:50', Rule::unique(User::class, 'username')],
             'name'     => ['required', 'string', 'max:100'],
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ], [
-            'idno.unique'     => 'A cashier with this ID Number is already registered.',
             'username.unique' => 'This username is already taken.',
         ]);
 
-        // Insert into app1.users with bcrypt hash (pwd column)
-        User::create([
-            'idno'     => trim($validated['idno']),
-            'username' => trim($validated['username']),
-            'pwd'      => Hash::make($validated['password']),
-            'name'     => trim($validated['name']),
+        // Insert into canteen.users with bcrypt hash
+        $user = User::create([
+            'name'        => trim($validated['name']),
+            'username'    => trim($validated['username']),
+            'password'    => Hash::make($validated['password']),
+            'role'        => 'admin',
+            'is_active'   => true,
         ]);
 
-        return redirect()->route('login')
-            ->with('success', 'Account registered successfully! You may now sign in.');
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('pos')
+            ->with('success', 'Registration successful! Welcome to Canteen Dawn, ' . $user->name . '.');
     }
 
     /**
-     * Log out the cashier and invalidate the session
+     * Log out current user
      */
     public function logout(Request $request): RedirectResponse
     {
@@ -116,7 +121,6 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login')
-            ->with('info', 'You have been safely signed out. Have a great day!');
+            ->with('info', 'You have been logged out securely.');
     }
 }
-

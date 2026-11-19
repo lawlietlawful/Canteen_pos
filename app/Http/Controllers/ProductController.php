@@ -3,22 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\InventoryProduct;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ProductController extends Controller
 {
     /**
-     * Display a paginated listing of products with search and category filters
+     * Display a paginated listing of menu items with search and category filters
      */
     public function index(Request $request): View
     {
-        $categories = Category::orderBy('category_name')->get();
+        $categories = Category::orderBy('name')->get();
 
-        $query = Product::with('category')->withCount('orderItems');
+        $query = Product::with(['category', 'inventoryProduct'])->withCount('orderItems');
 
         if ($request->filled('category')) {
             $query->where('category_id', (int)$request->category);
@@ -26,92 +28,123 @@ class ProductController extends Controller
 
         if ($request->filled('search')) {
             $term = '%' . trim($request->search) . '%';
-            $query->where('product_name', 'ilike', $term);
+            $query->where('name', 'ilike', $term);
         }
 
-        $products = $query->orderBy('product_name')->paginate(15)->withQueryString();
+        $products = $query->orderBy('name')->paginate(15)->withQueryString();
 
         return view('products.index', compact('products', 'categories'));
     }
 
     /**
-     * Show form to create a new product
+     * Show form to create a new menu item
      */
     public function create(): View
     {
-        $categories = Category::orderBy('category_name')->get();
+        $categories = Category::orderBy('name')->get();
         return view('products.create', compact('categories'));
     }
 
     /**
-     * Store a newly created product
+     * Store a newly created menu item and link to inventory
      */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'category_id'  => ['required', Rule::exists(Category::class, 'category_id')],
+            'category_id'  => ['required', Rule::exists(Category::class, 'id')],
             'product_name' => 'required|string|max:150',
             'price'        => 'required|numeric|min:0',
             'stock_qty'    => 'required|integer|min:0',
             'is_available' => 'nullable|boolean',
         ]);
 
-        $validated['is_available'] = $request->has('is_available');
+        $isAvailable = $request->has('is_available');
 
-        Product::create($validated);
+        // Create in inventory.products
+        $sku = 'CN-' . strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $validated['product_name']), 0, 3)) . '-' . rand(100, 999);
+        $invProduct = InventoryProduct::create([
+            'sku'              => $sku,
+            'name'             => $validated['product_name'],
+            'category_id'      => 4, // Meals/General
+            'cost_price'       => max(0.00, $validated['price'] * 0.7),
+            'selling_price'    => $validated['price'],
+            'quantity_on_hand' => (int)$validated['stock_qty'],
+            'reorder_level'    => 10,
+            'status'           => 'active',
+        ]);
+
+        // Create in canteen.menu_items
+        Product::create([
+            'category_id'  => $validated['category_id'],
+            'product_id'   => $invProduct->id,
+            'name'         => $validated['product_name'],
+            'price'        => $validated['price'],
+            'is_available' => $isAvailable,
+        ]);
 
         return redirect()->route('products.index')
-            ->with('success', "Product \"{$validated['product_name']}\" added successfully.");
+            ->with('success', "Menu item \"{$validated['product_name']}\" added successfully.");
     }
 
     /**
-     * Show form to edit an existing product
+     * Show form to edit an existing menu item
      */
     public function edit(Product $product): View
     {
-        $categories = Category::orderBy('category_name')->get();
+        $categories = Category::orderBy('name')->get();
         return view('products.edit', compact('product', 'categories'));
     }
 
     /**
-     * Update an existing product
+     * Update an existing menu item
      */
     public function update(Request $request, Product $product): RedirectResponse
     {
         $validated = $request->validate([
-            'category_id'  => ['required', Rule::exists(Category::class, 'category_id')],
+            'category_id'  => ['required', Rule::exists(Category::class, 'id')],
             'product_name' => 'required|string|max:150',
             'price'        => 'required|numeric|min:0',
             'stock_qty'    => 'required|integer|min:0',
             'is_available' => 'nullable|boolean',
         ]);
 
-        $validated['is_available'] = $request->has('is_available');
+        $product->update([
+            'category_id'  => $validated['category_id'],
+            'name'         => $validated['product_name'],
+            'price'        => $validated['price'],
+            'is_available' => $request->has('is_available'),
+        ]);
 
-        $product->update($validated);
+        if ($product->inventoryProduct) {
+            $product->inventoryProduct->update([
+                'name'             => $validated['product_name'],
+                'selling_price'    => $validated['price'],
+                'quantity_on_hand' => (int)$validated['stock_qty'],
+            ]);
+        }
 
         return redirect()->route('products.index')
-            ->with('success', "Product \"{$product->product_name}\" updated successfully.");
+            ->with('success', "Menu item \"{$product->name}\" updated successfully.");
     }
 
     /**
-     * Remove the specified product (Prevent delete if order_items exist!)
+     * Remove the specified menu item (Prevent delete if sale_items exist!)
      */
     public function destroy(Product $product): RedirectResponse
     {
         if ($product->orderItems()->exists()) {
-            return back()->with('warning', "Cannot delete product \"{$product->product_name}\" because it is referenced in past sales order records. You can toggle it to 'Unavailable' instead.");
+            return back()->with('warning', "Cannot delete \"{$product->name}\" because it is referenced in past sales records. You can toggle it to 'Unavailable' instead.");
         }
 
-        $name = $product->product_name;
+        $name = $product->name;
         $product->delete();
 
         return redirect()->route('products.index')
-            ->with('success', "Product \"{$name}\" has been deleted.");
+            ->with('success', "Menu item \"{$name}\" has been deleted.");
     }
 
     /**
-     * Toggle product availability status
+     * Toggle availability status
      */
     public function toggleAvailability(Product $product): RedirectResponse
     {
@@ -120,11 +153,11 @@ class ProductController extends Controller
         ]);
 
         $status = $product->is_available ? 'Available' : 'Unavailable';
-        return back()->with('success', "Product \"{$product->product_name}\" is now marked as {$status}.");
+        return back()->with('success', "\"{$product->name}\" is now marked as {$status}.");
     }
 
     /**
-     * Restock inventory for a product
+     * Restock inventory for a menu item
      */
     public function restock(Request $request, Product $product): RedirectResponse
     {
@@ -132,9 +165,23 @@ class ProductController extends Controller
             'add_qty' => 'required|integer|min:1',
         ]);
 
-        $product->increment('stock_qty', $validated['add_qty']);
+        $qty = (int)$validated['add_qty'];
 
-        return back()->with('success', "Added +{$validated['add_qty']} units to \"{$product->product_name}\". New stock: {$product->stock_qty}.");
+        if ($product->inventoryProduct) {
+            $product->inventoryProduct->increment('quantity_on_hand', $qty);
+
+            DB::table('inventory.stock_movements')->insert([
+                'product_id'     => $product->inventoryProduct->id,
+                'movement_type'  => 'in',
+                'quantity'       => $qty,
+                'reference_type' => 'manual_restock',
+                'reference_id'   => null,
+                'reason'         => "Restocked from Canteen POS",
+                'performed_by'   => 1,
+                'created_at'     => now(),
+            ]);
+        }
+
+        return back()->with('success', "Added +{$qty} units to \"{$product->name}\". Current stock: {$product->stock_qty}.");
     }
 }
-

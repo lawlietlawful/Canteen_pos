@@ -113,10 +113,10 @@
                                         ₱{{ number_format($ord->total_amount, 2) }}
                                     </td>
                                     <td>
-                                        @if ($ord->status === 'paid')
-                                            <span class="badge badge-success-subtle">Paid</span>
-                                        @elseif ($ord->status === 'cancelled')
-                                            <span class="badge badge-danger-subtle">Cancelled</span>
+                                        @if ($ord->status === 'paid' || $ord->status === 'completed')
+                                            <span class="badge badge-success-subtle">Completed</span>
+                                        @elseif ($ord->status === 'cancelled' || $ord->status === 'voided')
+                                            <span class="badge badge-danger-subtle">Voided</span>
                                         @else
                                             <span class="badge badge-warning-subtle">{{ ucfirst($ord->status) }}</span>
                                         @endif
@@ -131,7 +131,7 @@
                                                 Receipt
                                             </a>
 
-                                            @if ($ord->status !== 'cancelled')
+                                            @if ($ord->status !== 'cancelled' && $ord->status !== 'voided')
                                                 <button type="button" 
                                                         class="btn btn-outline-primary text-danger" 
                                                         style="font-size: 0.78rem;" 

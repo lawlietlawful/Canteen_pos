@@ -10,22 +10,35 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $table = 'canteen_pos.categories';
+    protected $table = 'canteen.menu_categories';
 
-    protected $primaryKey = 'category_id';
+    protected $primaryKey = 'id';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
-        'category_name',
+        'name',
+        'sort_order',
     ];
 
     /**
-     * Category has many products
+     * Backward-compatible aliases
+     */
+    public function getCategoryIdAttribute(): int
+    {
+        return $this->id;
+    }
+
+    public function getCategoryNameAttribute(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * Category has many Menu Items (Products)
      */
     public function products(): HasMany
     {
-        return $this->hasMany(Product::class, 'category_id', 'category_id');
+        return $this->hasMany(Product::class, 'category_id', 'id');
     }
 }
-

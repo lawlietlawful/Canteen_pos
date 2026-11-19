@@ -21,46 +21,46 @@ class ReportController extends Controller
         $dateTo = $request->input('date_to', Carbon::now('Asia/Manila')->toDateString());
 
         // 1. Overall Summary
-        $summary = Order::leftJoin('canteen_pos.payments as p', 'orders.order_id', '=', 'p.order_id')
-            ->where('orders.status', 'paid')
-            ->whereDate('orders.order_date', '>=', $dateFrom)
-            ->whereDate('orders.order_date', '<=', $dateTo)
+        $summary = Order::leftJoin('canteen.payments as p', 'sales.id', '=', 'p.sale_id')
+            ->where('sales.status', 'completed')
+            ->whereDate('sales.sold_at', '>=', $dateFrom)
+            ->whereDate('sales.sold_at', '<=', $dateTo)
             ->select(
-                DB::raw('COUNT(orders.order_id) as total_orders'),
-                DB::raw('COALESCE(SUM(orders.total_amount), 0) as total_revenue'),
-                DB::raw('COALESCE(AVG(orders.total_amount), 0) as avg_order_value'),
-                DB::raw("COALESCE(SUM(CASE WHEN p.payment_method = 'cash' THEN orders.total_amount ELSE 0 END), 0) as total_cash"),
-                DB::raw("COALESCE(SUM(CASE WHEN p.payment_method = 'gcash' THEN orders.total_amount ELSE 0 END), 0) as total_gcash")
+                DB::raw('COUNT(sales.id) as total_orders'),
+                DB::raw('COALESCE(SUM(sales.total), 0) as total_revenue'),
+                DB::raw('COALESCE(AVG(sales.total), 0) as avg_order_value'),
+                DB::raw("COALESCE(SUM(CASE WHEN p.method = 'cash' THEN sales.total ELSE 0 END), 0) as total_cash"),
+                DB::raw("COALESCE(SUM(CASE WHEN p.method = 'gcash' THEN sales.total ELSE 0 END), 0) as total_gcash")
             )
             ->first();
 
         // 2. Per-Product Totals
-        $productSales = DB::table('canteen_pos.order_items as oi')
-            ->join('canteen_pos.orders as o', 'oi.order_id', '=', 'o.order_id')
-            ->join('canteen_pos.products as p', 'oi.product_id', '=', 'p.product_id')
-            ->leftJoin('canteen_pos.categories as c', 'p.category_id', '=', 'c.category_id')
-            ->where('o.status', 'paid')
-            ->whereDate('o.order_date', '>=', $dateFrom)
-            ->whereDate('o.order_date', '<=', $dateTo)
+        $productSales = DB::table('canteen.sale_items as si')
+            ->join('canteen.sales as s', 'si.sale_id', '=', 's.id')
+            ->join('canteen.menu_items as m', 'si.menu_item_id', '=', 'm.id')
+            ->leftJoin('canteen.menu_categories as c', 'm.category_id', '=', 'c.id')
+            ->where('s.status', 'completed')
+            ->whereDate('s.sold_at', '>=', $dateFrom)
+            ->whereDate('s.sold_at', '<=', $dateTo)
             ->select(
-                'p.product_id',
-                'p.product_name',
-                DB::raw("COALESCE(c.category_name, 'Other') as category_name"),
-                DB::raw('SUM(oi.quantity) as total_qty_sold'),
-                DB::raw('AVG(oi.unit_price) as avg_price'),
-                DB::raw('SUM(oi.quantity * oi.unit_price) as total_product_revenue')
+                'm.id as product_id',
+                'm.name as product_name',
+                DB::raw("COALESCE(c.name, 'Other') as category_name"),
+                DB::raw('SUM(si.quantity) as total_qty_sold'),
+                DB::raw('AVG(si.unit_price) as avg_price'),
+                DB::raw('SUM(si.quantity * si.unit_price) as total_product_revenue')
             )
-            ->groupBy('p.product_id', 'p.product_name', 'c.category_name')
+            ->groupBy('m.id', 'm.name', 'c.name')
             ->orderByDesc('total_product_revenue')
             ->get();
 
-        // 3. Paid Orders List in Period
+        // 3. Completed Orders List in Period
         $periodOrders = Order::with(['user', 'payment'])
-            ->where('status', 'paid')
-            ->whereDate('order_date', '>=', $dateFrom)
-            ->whereDate('order_date', '<=', $dateTo)
-            ->orderBy('order_date', 'desc')
-            ->orderBy('order_id', 'desc')
+            ->where('status', 'completed')
+            ->whereDate('sold_at', '>=', $dateFrom)
+            ->whereDate('sold_at', '<=', $dateTo)
+            ->orderBy('sold_at', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate(20)
             ->withQueryString();
 
@@ -76,11 +76,11 @@ class ReportController extends Controller
         $dateTo = $request->input('date_to', Carbon::now('Asia/Manila')->toDateString());
 
         $orders = Order::with(['user', 'payment'])
-            ->where('status', 'paid')
-            ->whereDate('order_date', '>=', $dateFrom)
-            ->whereDate('order_date', '<=', $dateTo)
-            ->orderBy('order_date')
-            ->orderBy('order_id')
+            ->where('status', 'completed')
+            ->whereDate('sold_at', '>=', $dateFrom)
+            ->whereDate('sold_at', '<=', $dateTo)
+            ->orderBy('sold_at')
+            ->orderBy('id')
             ->get();
 
         $filename = "canteen_sales_{$dateFrom}_to_{$dateTo}.csv";
@@ -92,37 +92,55 @@ class ReportController extends Controller
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
             // Metadata Headers
-            fputcsv($handle, ['CANTEEN DAWN - OFFICIAL SALES REPORT']);
+            fputcsv($handle, ['CANTEEN MANAGEMENT SYSTEM - OFFICIAL SALES REPORT']);
             fputcsv($handle, ['Period:', "{$dateFrom} to {$dateTo}"]);
             fputcsv($handle, ['Generated At:', Carbon::now('Asia/Manila')->format('Y-m-d h:i A') . ' (Asia/Manila)']);
             fputcsv($handle, ['Generated By:', Auth::user()->name]);
             fputcsv($handle, []);
 
             // Column Headers
-            fputcsv($handle, ['Order No.', 'Date & Time', 'Cashier', 'Customer', 'Payment Method', 'Total Amount (PHP)', 'Status']);
+            fputcsv($handle, [
+                'Receipt No',
+                'Date & Time',
+                'Cashier',
+                'Order Type / Customer',
+                'Payment Method',
+                'Subtotal (PHP)',
+                'Discount (PHP)',
+                'Total Amount (PHP)',
+                'Amount Tendered (PHP)',
+                'Change (PHP)',
+                'Status',
+            ]);
 
-            $totalRevenue = 0;
-            foreach ($orders as $order) {
-                $totalRevenue += (float)$order->total_amount;
+            // Data Rows
+            $grandTotal = 0.0;
+            foreach ($orders as $ord) {
+                $total = (float)$ord->total_amount;
+                $grandTotal += $total;
+
                 fputcsv($handle, [
-                    '#ORD-' . str_pad($order->order_id, 5, '0', STR_PAD_LEFT),
-                    $order->order_date ? Carbon::parse($order->order_date)->format('M d, Y h:i A') : '',
-                    $order->user->name ?? 'N/A',
-                    $order->customer_name ?: 'Walk-in',
-                    strtoupper($order->payment->payment_method ?? 'cash'),
-                    number_format($order->total_amount, 2, '.', ''),
-                    strtoupper($order->status),
+                    $ord->receipt_no ?: ('#ORD-' . str_pad($ord->id, 5, '0', STR_PAD_LEFT)),
+                    $ord->order_date ? $ord->order_date->format('Y-m-d h:i A') : '',
+                    $ord->user->name ?? 'N/A',
+                    $ord->customer_name ?: 'Walk-in',
+                    strtoupper($ord->payment->payment_method ?? 'CASH'),
+                    number_format((float)$ord->subtotal, 2, '.', ''),
+                    number_format((float)$ord->discount, 2, '.', ''),
+                    number_format($total, 2, '.', ''),
+                    number_format((float)($ord->payment->amount_paid ?? $total), 2, '.', ''),
+                    number_format((float)($ord->payment->change_amount ?? 0), 2, '.', ''),
+                    strtoupper($ord->status),
                 ]);
             }
 
-            // Summary Totals Row
             fputcsv($handle, []);
-            fputcsv($handle, ['TOTALS', count($orders) . ' orders', '', '', 'GRAND TOTAL:', number_format($totalRevenue, 2, '.', ''), '']);
+            fputcsv($handle, ['', '', '', '', 'GRAND TOTAL:', '', '', number_format($grandTotal, 2, '.', ''), '', '', '']);
 
             fclose($handle);
         }, $filename, [
-            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
 }
-

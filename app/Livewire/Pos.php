@@ -25,11 +25,11 @@ class Pos extends Component
      */
     public function render()
     {
-        $categories = Category::orderBy('category_name')->get();
+        $categories = Category::orderBy('sort_order')->orderBy('name')->get();
 
-        $query = Product::with('category')
+        $query = Product::with(['category', 'inventoryProduct'])
             ->orderBy('is_available', 'desc')
-            ->orderBy('product_name');
+            ->orderBy('name');
 
         if ($this->selectedCategory !== 'all') {
             $query->where('category_id', (int)$this->selectedCategory);
@@ -37,7 +37,7 @@ class Pos extends Component
 
         if (!empty(trim($this->search))) {
             $term = '%' . trim($this->search) . '%';
-            $query->where('product_name', 'ilike', $term);
+            $query->where('name', 'ilike', $term);
         }
 
         $products = $query->get();
@@ -73,7 +73,7 @@ class Pos extends Component
     {
         $this->errorMessage = '';
 
-        $product = Product::find($productId);
+        $product = Product::with('inventoryProduct')->find($productId);
         if (!$product || !$product->is_available || $product->stock_qty <= 0) {
             $this->errorMessage = "Selected product is unavailable or out of stock.";
             return;
@@ -87,8 +87,8 @@ class Pos extends Component
             $this->cart[$productId]['qty'] += 1;
         } else {
             $this->cart[$productId] = [
-                'id'    => $product->product_id,
-                'name'  => $product->product_name,
+                'id'    => $product->id,
+                'name'  => $product->name,
                 'price' => (float)$product->price,
                 'stock' => (int)$product->stock_qty,
                 'qty'   => 1,
@@ -140,7 +140,7 @@ class Pos extends Component
     }
 
     /**
-     * Direct update of cart item quantity
+     * Update item quantity directly
      */
     public function updateQty(int $productId, $newQty): void
     {
@@ -151,12 +151,16 @@ class Pos extends Component
         }
 
         $newQty = (int)$newQty;
-        $item = &$this->cart[$productId];
 
         if ($newQty <= 0) {
             unset($this->cart[$productId]);
-        } elseif ($newQty > $item['stock']) {
-            $this->errorMessage = "Adjusted to maximum available stock ({$item['stock']}) for \"{$item['name']}\".";
+            $this->syncPaymentAmount();
+            return;
+        }
+
+        $item = &$this->cart[$productId];
+        if ($newQty > $item['stock']) {
+            $this->errorMessage = "Stock limit reached ({$item['stock']}) for \"{$item['name']}\".";
             $item['qty'] = $item['stock'];
         } else {
             $item['qty'] = $newQty;
@@ -289,26 +293,26 @@ class Pos extends Component
             ];
         }
 
-        $cashierIdno = Auth::user()->idno;
+        $cashierId = Auth::user()->id;
 
         try {
             $order = $service->checkout(
                 items: $items,
                 paymentMethod: $this->paymentMethod,
                 amountPaid: $this->paymentMethod === 'gcash' ? $total : $tendered,
-                cashierIdno: $cashierIdno,
+                cashierIdentifier: $cashierId,
                 customerName: $this->customerName
             );
 
             // Set completed order for receipt modal display
-            $this->completedOrderId = $order->order_id;
+            $this->completedOrderId = $order->id;
 
             // Reset cart and customer name for the next order
             $this->clearCart();
             $this->customerName = '';
 
             // Dispatch event for UI modal display & optional sound/auto-print
-            $this->dispatch('order-completed', orderId: $order->order_id);
+            $this->dispatch('order-completed', orderId: $order->id);
 
         } catch (Exception $e) {
             $this->errorMessage = $e->getMessage();
@@ -323,4 +327,3 @@ class Pos extends Component
         $this->completedOrderId = null;
     }
 }
-

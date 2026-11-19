@@ -6,7 +6,8 @@ echo ==============================================================
 echo       CANTEEN MANAGEMENT SYSTEM - DATABASE RESTORE TOOL
 echo ==============================================================
 echo.
-echo This script will import the database backup into PostgreSQL.
+echo This script will import the centralized database into PostgreSQL.
+echo Database: final_database (Schemas: canteen, inventory, eis)
 echo.
 
 set /p DB_HOST="Enter PostgreSQL Host [default: 127.0.0.1]: " || set DB_HOST=127.0.0.1
@@ -21,11 +22,11 @@ if "%DB_USER%"=="" set DB_USER=postgres
 set /p PGPASSWORD="Enter PostgreSQL Password: "
 
 echo.
-echo [1/2] Creating database 'canteen_pos' (if not exists)...
-psql -h %DB_HOST% -p %DB_PORT% -U %DB_USER% -d postgres -c "CREATE DATABASE canteen_pos;" 2>nul
+echo [1/2] Creating database 'final_database' (if not exists)...
+psql -h %DB_HOST% -p %DB_PORT% -U %DB_USER% -d postgres -c "CREATE DATABASE final_database;" 2>nul
 
-echo [2/2] Importing database_backup.sql into 'canteen_pos'...
-psql -h %DB_HOST% -p %DB_PORT% -U %DB_USER% -d canteen_pos -f "%~dp0database_backup.sql"
+echo [2/2] Importing database_backup.sql into 'final_database'...
+psql -h %DB_HOST% -p %DB_PORT% -U %DB_USER% -d final_database -f "%~dp0database_backup.sql"
 
 echo.
 echo ==============================================================

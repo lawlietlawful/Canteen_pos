@@ -10,42 +10,70 @@ class OrderItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'canteen_pos.order_items';
+    /**
+     * Centralized canteen sale items table
+     */
+    protected $table = 'canteen.sale_items';
 
-    protected $primaryKey = 'order_item_id';
+    protected $primaryKey = 'id';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     /**
-     * NOTE: line_total is a database generated column, so it is strictly kept out of $fillable
+     * 'line_total' is a PostgreSQL GENERATED column (unit_price * quantity)
+     * Never insert or update 'line_total' directly.
      */
     protected $fillable = [
-        'order_id',
-        'product_id',
-        'quantity',
+        'sale_id',
+        'menu_item_id',
+        'item_name',
         'unit_price',
+        'quantity',
     ];
 
     protected $casts = [
-        'quantity'   => 'integer',
         'unit_price' => 'decimal:2',
         'line_total' => 'decimal:2',
+        'quantity'   => 'integer',
     ];
 
     /**
-     * OrderItem belongs to an Order
+     * Backward-compatible order_item_id accessor
      */
-    public function order(): BelongsTo
+    public function getOrderItemIdAttribute(): int
     {
-        return $this->belongsTo(Order::class, 'order_id', 'order_id');
+        return $this->id;
     }
 
     /**
-     * OrderItem belongs to a Product
+     * Backward-compatible order_id accessor
+     */
+    public function getOrderIdAttribute(): int
+    {
+        return $this->sale_id;
+    }
+
+    /**
+     * Backward-compatible product_id accessor
+     */
+    public function getProductIdAttribute(): int
+    {
+        return $this->menu_item_id;
+    }
+
+    /**
+     * Sale item belongs to Menu Item (Product)
      */
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class, 'product_id', 'product_id');
+        return $this->belongsTo(Product::class, 'menu_item_id', 'id');
+    }
+
+    /**
+     * Sale item belongs to Sale (Order)
+     */
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class, 'sale_id', 'id');
     }
 }
-

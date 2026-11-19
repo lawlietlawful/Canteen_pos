@@ -11,40 +11,79 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $table = 'canteen_pos.products';
+    /**
+     * Centralized canteen menu items table
+     */
+    protected $table = 'canteen.menu_items';
 
-    protected $primaryKey = 'product_id';
+    protected $primaryKey = 'id';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'category_id',
-        'product_name',
+        'product_id',
+        'name',
+        'description',
         'price',
-        'stock_qty',
         'is_available',
     ];
 
     protected $casts = [
         'price'        => 'decimal:2',
-        'stock_qty'    => 'integer',
         'is_available' => 'boolean',
     ];
 
     /**
-     * Product belongs to a Category
+     * Backward-compatible product_id accessor
      */
-    public function category(): BelongsTo
+    public function getProductIdAttribute(): int
     {
-        return $this->belongsTo(Category::class, 'category_id', 'category_id');
+        return $this->id;
     }
 
     /**
-     * Product has many OrderItems
+     * Backward-compatible product_name accessor
+     */
+    public function getProductNameAttribute(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * Real-time stock from Group 2's inventory.products
+     */
+    public function getStockQtyAttribute(): int
+    {
+        if ($this->relationLoaded('inventoryProduct') && $this->inventoryProduct) {
+            return (int)$this->inventoryProduct->quantity_on_hand;
+        }
+
+        $inv = $this->inventoryProduct;
+        return $inv ? (int)$inv->quantity_on_hand : 999;
+    }
+
+    /**
+     * Menu Item belongs to a Menu Category
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'category_id', 'id');
+    }
+
+    /**
+     * Linked to Group 2's warehouse product
+     */
+    public function inventoryProduct(): BelongsTo
+    {
+        return $this->belongsTo(InventoryProduct::class, 'product_id', 'id');
+    }
+
+    /**
+     * Menu Item has many Sale Items
      */
     public function orderItems(): HasMany
     {
-        return $this->hasMany(OrderItem::class, 'product_id', 'product_id');
+        return $this->hasMany(OrderItem::class, 'menu_item_id', 'id');
     }
 }
-

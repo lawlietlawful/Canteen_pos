@@ -12,20 +12,20 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * Shared PostgreSQL table in app1 schema
+     * Centralized table in canteen schema
      */
-    protected $table = 'app1.users';
+    protected $table = 'canteen.users';
 
     /**
-     * Primary key is student/employee ID string
+     * Primary key
      */
-    protected $primaryKey = 'idno';
+    protected $primaryKey = 'id';
 
-    public $incrementing = false;
+    public $incrementing = true;
 
-    protected $keyType = 'string';
+    protected $keyType = 'int';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     /**
      * The attributes that are mass assignable.
@@ -33,10 +33,13 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'idno',
-        'username',
-        'pwd',
+        'employee_id',
         'name',
+        'username',
+        'password',
+        'role',
+        'is_active',
+        'last_login_at',
     ];
 
     /**
@@ -45,30 +48,30 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'pwd',
+        'password',
     ];
 
     /**
-     * Override authentication password column to match 'pwd'
+     * Backward-compatible idno attribute
      */
-    public function getAuthPassword()
+    public function getIdnoAttribute(): string
     {
-        return $this->pwd;
+        return (string)$this->id;
     }
 
     /**
-     * Disable remember token since the shared table does not contain remember_token column
+     * Disable remember token since canteen.users does not contain remember_token column
      */
-    public function getRememberTokenName()
+    public function getRememberTokenName(): string
     {
         return '';
     }
 
     /**
-     * An app1 user (cashier) can have many orders
+     * Orders/Sales made by this cashier
      */
     public function orders(): HasMany
     {
-        return $this->hasMany(Order::class, 'idno', 'idno');
+        return $this->hasMany(Order::class, 'cashier_id', 'id');
     }
 }

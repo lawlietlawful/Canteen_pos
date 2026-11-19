@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict peyPwz0L6b34Gtv0Gp9lcA0ZCpEGnDcKVRSdPq5zf1DzamIXPexU5V5fmLU28cC
+\restrict m4OOIVmULuxlIn0wnGYWRppzNZsccg103ICEm0sgatR1gfQhGblKZJjdcPJdCuf
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -20,17 +20,61 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: app1; Type: SCHEMA; Schema: -; Owner: -
+-- Name: canteen; Type: SCHEMA; Schema: -; Owner: -
 --
 
-CREATE SCHEMA app1;
+CREATE SCHEMA canteen;
 
 
 --
--- Name: canteen_pos; Type: SCHEMA; Schema: -; Owner: -
+-- Name: eis; Type: SCHEMA; Schema: -; Owner: -
 --
 
-CREATE SCHEMA canteen_pos;
+CREATE SCHEMA eis;
+
+
+--
+-- Name: inventory; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA inventory;
+
+
+--
+-- Name: canteen_stock_change(bigint, integer, bigint, text); Type: FUNCTION; Schema: inventory; Owner: -
+--
+
+CREATE FUNCTION inventory.canteen_stock_change(p_product_id bigint, p_change integer, p_sale_id bigint, p_reason text DEFAULT 'Canteen POS'::text) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'inventory', 'pg_temp'
+    AS $$
+DECLARE v_user BIGINT;
+BEGIN
+  IF p_change = 0 THEN
+    RAISE EXCEPTION 'Stock change cannot be 0';
+  END IF;
+
+  SELECT id INTO v_user FROM users WHERE username = 'canteen_system';
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'System user canteen_system is missing';
+  END IF;
+
+  -- fails automatically if stock would go below 0 (CHECK on quantity_on_hand)
+  UPDATE products
+     SET quantity_on_hand = quantity_on_hand + p_change, updated_at = now()
+   WHERE id = p_product_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Product % not found', p_product_id;
+  END IF;
+
+  INSERT INTO stock_movements
+    (product_id, movement_type, quantity, reference_type, reference_id, reason, performed_by)
+  VALUES
+    (p_product_id,
+     CASE WHEN p_change < 0 THEN 'out' ELSE 'in' END,
+     p_change, 'canteen_sale', p_sale_id, p_reason, v_user);
+END;
+$$;
 
 
 SET default_tablespace = '';
@@ -38,467 +82,1786 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: users; Type: TABLE; Schema: app1; Owner: -
+-- Name: menu_categories; Type: TABLE; Schema: canteen; Owner: -
 --
 
-CREATE TABLE app1.users (
-    idno character varying(50) NOT NULL,
-    username character varying(50) NOT NULL,
-    pwd character varying(255) NOT NULL,
-    name character varying(100) NOT NULL
+CREATE TABLE canteen.menu_categories (
+    id bigint NOT NULL,
+    name character varying(100) NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
 --
--- Name: categories; Type: TABLE; Schema: canteen_pos; Owner: -
+-- Name: menu_categories_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
 --
 
-CREATE TABLE canteen_pos.categories (
-    category_id integer NOT NULL,
-    category_name character varying(100) NOT NULL
-);
-
-
---
--- Name: categories_category_id_seq; Type: SEQUENCE; Schema: canteen_pos; Owner: -
---
-
-CREATE SEQUENCE canteen_pos.categories_category_id_seq
-    AS integer
+ALTER TABLE canteen.menu_categories ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME canteen.menu_categories_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: categories_category_id_seq; Type: SEQUENCE OWNED BY; Schema: canteen_pos; Owner: -
---
-
-ALTER SEQUENCE canteen_pos.categories_category_id_seq OWNED BY canteen_pos.categories.category_id;
-
-
---
--- Name: order_items; Type: TABLE; Schema: canteen_pos; Owner: -
---
-
-CREATE TABLE canteen_pos.order_items (
-    order_item_id integer NOT NULL,
-    order_id integer NOT NULL,
-    product_id integer NOT NULL,
-    quantity integer NOT NULL,
-    unit_price numeric(10,2) NOT NULL,
-    line_total numeric(10,2) GENERATED ALWAYS AS (((quantity)::numeric * unit_price)) STORED,
-    CONSTRAINT order_items_quantity_check CHECK ((quantity > 0)),
-    CONSTRAINT order_items_unit_price_check CHECK ((unit_price >= (0)::numeric))
+    CACHE 1
 );
 
 
 --
--- Name: order_items_order_item_id_seq; Type: SEQUENCE; Schema: canteen_pos; Owner: -
+-- Name: menu_items; Type: TABLE; Schema: canteen; Owner: -
 --
 
-CREATE SEQUENCE canteen_pos.order_items_order_item_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: order_items_order_item_id_seq; Type: SEQUENCE OWNED BY; Schema: canteen_pos; Owner: -
---
-
-ALTER SEQUENCE canteen_pos.order_items_order_item_id_seq OWNED BY canteen_pos.order_items.order_item_id;
-
-
---
--- Name: orders; Type: TABLE; Schema: canteen_pos; Owner: -
---
-
-CREATE TABLE canteen_pos.orders (
-    order_id integer NOT NULL,
-    idno character varying(50) NOT NULL,
-    customer_name character varying(100),
-    order_date timestamp without time zone DEFAULT now() NOT NULL,
-    status character varying(20) DEFAULT 'pending'::character varying NOT NULL,
-    total_amount numeric(10,2) DEFAULT 0.00 NOT NULL,
-    CONSTRAINT orders_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'paid'::character varying, 'cancelled'::character varying])::text[])))
+CREATE TABLE canteen.menu_items (
+    id bigint NOT NULL,
+    category_id bigint NOT NULL,
+    product_id bigint,
+    name character varying(150) NOT NULL,
+    description text,
+    price numeric(10,2) NOT NULL,
+    is_available boolean DEFAULT true NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT menu_items_price_check CHECK ((price >= (0)::numeric))
 );
 
 
 --
--- Name: orders_order_id_seq; Type: SEQUENCE; Schema: canteen_pos; Owner: -
+-- Name: menu_items_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
 --
 
-CREATE SEQUENCE canteen_pos.orders_order_id_seq
-    AS integer
+ALTER TABLE canteen.menu_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME canteen.menu_items_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
+    CACHE 1
+);
 
 
 --
--- Name: orders_order_id_seq; Type: SEQUENCE OWNED BY; Schema: canteen_pos; Owner: -
+-- Name: payments; Type: TABLE; Schema: canteen; Owner: -
 --
 
-ALTER SEQUENCE canteen_pos.orders_order_id_seq OWNED BY canteen_pos.orders.order_id;
-
-
---
--- Name: payments; Type: TABLE; Schema: canteen_pos; Owner: -
---
-
-CREATE TABLE canteen_pos.payments (
-    payment_id integer NOT NULL,
-    order_id integer NOT NULL,
-    payment_method character varying(20) DEFAULT 'cash'::character varying NOT NULL,
-    amount_paid numeric(10,2) NOT NULL,
-    change_amount numeric(10,2) DEFAULT 0.00 NOT NULL,
+CREATE TABLE canteen.payments (
+    id bigint NOT NULL,
+    sale_id bigint NOT NULL,
+    method character varying(20) DEFAULT 'cash'::character varying NOT NULL,
+    amount_tendered numeric(10,2) NOT NULL,
+    change_given numeric(10,2) DEFAULT 0 NOT NULL,
+    reference_no character varying(50),
     paid_at timestamp without time zone DEFAULT now() NOT NULL,
-    CONSTRAINT payments_payment_method_check CHECK (((payment_method)::text = ANY ((ARRAY['cash'::character varying, 'gcash'::character varying])::text[])))
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT payments_amount_tendered_check CHECK ((amount_tendered >= (0)::numeric)),
+    CONSTRAINT payments_change_given_check CHECK ((change_given >= (0)::numeric)),
+    CONSTRAINT payments_method_check CHECK (((method)::text = ANY ((ARRAY['cash'::character varying, 'gcash'::character varying, 'other'::character varying])::text[])))
 );
 
 
 --
--- Name: payments_payment_id_seq; Type: SEQUENCE; Schema: canteen_pos; Owner: -
+-- Name: payments_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
 --
 
-CREATE SEQUENCE canteen_pos.payments_payment_id_seq
-    AS integer
+ALTER TABLE canteen.payments ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME canteen.payments_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: payments_payment_id_seq; Type: SEQUENCE OWNED BY; Schema: canteen_pos; Owner: -
---
-
-ALTER SEQUENCE canteen_pos.payments_payment_id_seq OWNED BY canteen_pos.payments.payment_id;
-
-
---
--- Name: products; Type: TABLE; Schema: canteen_pos; Owner: -
---
-
-CREATE TABLE canteen_pos.products (
-    product_id integer NOT NULL,
-    category_id integer,
-    product_name character varying(150) NOT NULL,
-    price numeric(10,2) DEFAULT 0.00 NOT NULL,
-    stock_qty integer DEFAULT 0 NOT NULL,
-    is_available boolean DEFAULT true NOT NULL
+    CACHE 1
 );
 
 
 --
--- Name: products_product_id_seq; Type: SEQUENCE; Schema: canteen_pos; Owner: -
+-- Name: sale_items; Type: TABLE; Schema: canteen; Owner: -
 --
 
-CREATE SEQUENCE canteen_pos.products_product_id_seq
-    AS integer
+CREATE TABLE canteen.sale_items (
+    id bigint NOT NULL,
+    sale_id bigint NOT NULL,
+    menu_item_id bigint NOT NULL,
+    item_name character varying(150) NOT NULL,
+    unit_price numeric(10,2) NOT NULL,
+    quantity integer NOT NULL,
+    line_total numeric(10,2) GENERATED ALWAYS AS ((unit_price * (quantity)::numeric)) STORED,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sale_items_quantity_check CHECK ((quantity > 0)),
+    CONSTRAINT sale_items_unit_price_check CHECK ((unit_price >= (0)::numeric))
+);
+
+
+--
+-- Name: sale_items_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+--
+
+ALTER TABLE canteen.sale_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME canteen.sale_items_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
-    CACHE 1;
+    CACHE 1
+);
 
 
 --
--- Name: products_product_id_seq; Type: SEQUENCE OWNED BY; Schema: canteen_pos; Owner: -
+-- Name: sales; Type: TABLE; Schema: canteen; Owner: -
 --
 
-ALTER SEQUENCE canteen_pos.products_product_id_seq OWNED BY canteen_pos.products.product_id;
-
-
---
--- Name: categories category_id; Type: DEFAULT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.categories ALTER COLUMN category_id SET DEFAULT nextval('canteen_pos.categories_category_id_seq'::regclass);
-
-
---
--- Name: order_items order_item_id; Type: DEFAULT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.order_items ALTER COLUMN order_item_id SET DEFAULT nextval('canteen_pos.order_items_order_item_id_seq'::regclass);
-
-
---
--- Name: orders order_id; Type: DEFAULT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.orders ALTER COLUMN order_id SET DEFAULT nextval('canteen_pos.orders_order_id_seq'::regclass);
-
-
---
--- Name: payments payment_id; Type: DEFAULT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.payments ALTER COLUMN payment_id SET DEFAULT nextval('canteen_pos.payments_payment_id_seq'::regclass);
+CREATE TABLE canteen.sales (
+    id bigint NOT NULL,
+    receipt_no character varying(30) NOT NULL,
+    shift_id bigint NOT NULL,
+    cashier_id bigint NOT NULL,
+    order_type character varying(20) DEFAULT 'dine_in'::character varying NOT NULL,
+    subtotal numeric(10,2) NOT NULL,
+    discount numeric(10,2) DEFAULT 0 NOT NULL,
+    total numeric(10,2) GENERATED ALWAYS AS ((subtotal - discount)) STORED,
+    status character varying(20) DEFAULT 'completed'::character varying NOT NULL,
+    notes text,
+    sold_at timestamp without time zone DEFAULT now() NOT NULL,
+    voided_by bigint,
+    voided_at timestamp without time zone,
+    void_reason text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sales_check CHECK ((discount <= subtotal)),
+    CONSTRAINT sales_check1 CHECK ((((status)::text <> 'voided'::text) OR ((voided_by IS NOT NULL) AND (voided_at IS NOT NULL)))),
+    CONSTRAINT sales_discount_check CHECK ((discount >= (0)::numeric)),
+    CONSTRAINT sales_order_type_check CHECK (((order_type)::text = ANY ((ARRAY['dine_in'::character varying, 'take_out'::character varying])::text[]))),
+    CONSTRAINT sales_status_check CHECK (((status)::text = ANY ((ARRAY['completed'::character varying, 'voided'::character varying])::text[]))),
+    CONSTRAINT sales_subtotal_check CHECK ((subtotal >= (0)::numeric))
+);
 
 
 --
--- Name: products product_id; Type: DEFAULT; Schema: canteen_pos; Owner: -
+-- Name: sales_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
 --
 
-ALTER TABLE ONLY canteen_pos.products ALTER COLUMN product_id SET DEFAULT nextval('canteen_pos.products_product_id_seq'::regclass);
+ALTER TABLE canteen.sales ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME canteen.sales_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: app1; Owner: -
+-- Name: shifts; Type: TABLE; Schema: canteen; Owner: -
 --
 
-COPY app1.users (idno, username, pwd, name) FROM stdin;
-1001	admin@school.com	$2y$12$wMpKH.Eahg.ODvg0dY90/uO3YdV63sse33air6IRCfTLXXR0SVKFa	Admin Cashier
-1002	cashier1@school.com	$2y$12$v6SFH4zv17UU9OsPQzjUyu6rBTiZbNZwBzgQ7PnS9NTS8ofyQzW8y	Canteen Staff
-1004	admin1	$2y$12$1mpMRum/LPP8oEmQgu5M8.WCWl2VtfihHtIymJa/WD6CIXZC/MUt6	Jolly Hope Dancila
+CREATE TABLE canteen.shifts (
+    id bigint NOT NULL,
+    cashier_id bigint NOT NULL,
+    opened_at timestamp without time zone DEFAULT now() NOT NULL,
+    closed_at timestamp without time zone,
+    opening_cash numeric(10,2) DEFAULT 0 NOT NULL,
+    closing_cash numeric(10,2),
+    status character varying(20) DEFAULT 'open'::character varying NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT shifts_status_check CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'closed'::character varying])::text[])))
+);
+
+
+--
+-- Name: shifts_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+--
+
+ALTER TABLE canteen.shifts ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME canteen.shifts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: users; Type: TABLE; Schema: canteen; Owner: -
+--
+
+CREATE TABLE canteen.users (
+    id bigint NOT NULL,
+    employee_id bigint,
+    name character varying(150) NOT NULL,
+    username character varying(50) NOT NULL,
+    password character varying(255) NOT NULL,
+    role character varying(20) DEFAULT 'cashier'::character varying NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    last_login_at timestamp without time zone,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_check CHECK ((((role)::text <> 'cashier'::text) OR (employee_id IS NOT NULL))),
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'cashier'::character varying])::text[])))
+);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+--
+
+ALTER TABLE canteen.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME canteen.users_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: attendance; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.attendance (
+    id bigint NOT NULL,
+    employee_id bigint NOT NULL,
+    work_date date NOT NULL,
+    time_in time without time zone,
+    time_out time without time zone,
+    status character varying(20) DEFAULT 'present'::character varying NOT NULL,
+    remarks text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT attendance_status_check CHECK (((status)::text = ANY ((ARRAY['present'::character varying, 'absent'::character varying, 'late'::character varying, 'on_leave'::character varying])::text[])))
+);
+
+
+--
+-- Name: attendance_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.attendance ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.attendance_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: departments; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.departments (
+    id bigint NOT NULL,
+    name character varying(100) NOT NULL,
+    description text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: departments_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.departments ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.departments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: emergency_contacts; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.emergency_contacts (
+    id bigint NOT NULL,
+    employee_id bigint NOT NULL,
+    name character varying(150) NOT NULL,
+    relationship character varying(50) NOT NULL,
+    phone character varying(20) NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: emergency_contacts_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.emergency_contacts ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.emergency_contacts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: employees; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.employees (
+    id bigint NOT NULL,
+    employee_no character varying(20) NOT NULL,
+    first_name character varying(100) NOT NULL,
+    middle_name character varying(100),
+    last_name character varying(100) NOT NULL,
+    gender character varying(10),
+    birthdate date,
+    civil_status character varying(20),
+    email character varying(150),
+    phone character varying(20),
+    address text,
+    department_id bigint NOT NULL,
+    position_id bigint NOT NULL,
+    date_hired date NOT NULL,
+    employment_type character varying(20) DEFAULT 'Regular'::character varying NOT NULL,
+    status character varying(20) DEFAULT 'active'::character varying NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT employees_civil_status_check CHECK (((civil_status)::text = ANY ((ARRAY['Single'::character varying, 'Married'::character varying, 'Widowed'::character varying, 'Separated'::character varying])::text[]))),
+    CONSTRAINT employees_employment_type_check CHECK (((employment_type)::text = ANY ((ARRAY['Regular'::character varying, 'Contractual'::character varying, 'Part-time'::character varying])::text[]))),
+    CONSTRAINT employees_gender_check CHECK (((gender)::text = ANY ((ARRAY['Male'::character varying, 'Female'::character varying])::text[]))),
+    CONSTRAINT employees_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'inactive'::character varying, 'resigned'::character varying, 'terminated'::character varying])::text[])))
+);
+
+
+--
+-- Name: employees_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.employees ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.employees_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: leave_requests; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.leave_requests (
+    id bigint NOT NULL,
+    employee_id bigint NOT NULL,
+    leave_type_id bigint NOT NULL,
+    start_date date NOT NULL,
+    end_date date NOT NULL,
+    reason text,
+    status character varying(20) DEFAULT 'pending'::character varying NOT NULL,
+    approved_by bigint,
+    decided_at timestamp without time zone,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT leave_requests_check CHECK ((end_date >= start_date)),
+    CONSTRAINT leave_requests_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying, 'cancelled'::character varying])::text[])))
+);
+
+
+--
+-- Name: leave_requests_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.leave_requests ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.leave_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: leave_types; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.leave_types (
+    id bigint NOT NULL,
+    name character varying(50) NOT NULL,
+    days_allowed integer DEFAULT 0 NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: leave_types_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.leave_types ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.leave_types_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: payroll; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.payroll (
+    id bigint NOT NULL,
+    employee_id bigint NOT NULL,
+    period_start date NOT NULL,
+    period_end date NOT NULL,
+    basic_pay numeric(10,2) NOT NULL,
+    allowances numeric(10,2) DEFAULT 0 NOT NULL,
+    deductions numeric(10,2) DEFAULT 0 NOT NULL,
+    net_pay numeric(10,2) GENERATED ALWAYS AS (((basic_pay + allowances) - deductions)) STORED,
+    status character varying(20) DEFAULT 'draft'::character varying NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT payroll_check CHECK ((period_end >= period_start)),
+    CONSTRAINT payroll_status_check CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'released'::character varying])::text[])))
+);
+
+
+--
+-- Name: payroll_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.payroll ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.payroll_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: positions; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.positions (
+    id bigint NOT NULL,
+    department_id bigint NOT NULL,
+    title character varying(100) NOT NULL,
+    base_salary numeric(10,2) DEFAULT 0 NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: positions_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.positions ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.positions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: users; Type: TABLE; Schema: eis; Owner: -
+--
+
+CREATE TABLE eis.users (
+    id bigint NOT NULL,
+    employee_id bigint NOT NULL,
+    username character varying(50) NOT NULL,
+    password character varying(255) NOT NULL,
+    role character varying(20) DEFAULT 'employee'::character varying NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    last_login_at timestamp without time zone,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'hr'::character varying, 'employee'::character varying])::text[])))
+);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+--
+
+ALTER TABLE eis.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME eis.users_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: categories; Type: TABLE; Schema: inventory; Owner: -
+--
+
+CREATE TABLE inventory.categories (
+    id bigint NOT NULL,
+    name character varying(100) NOT NULL,
+    description text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+--
+
+ALTER TABLE inventory.categories ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME inventory.categories_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: products; Type: TABLE; Schema: inventory; Owner: -
+--
+
+CREATE TABLE inventory.products (
+    id bigint NOT NULL,
+    sku character varying(50) NOT NULL,
+    barcode character varying(50),
+    name character varying(150) NOT NULL,
+    description text,
+    category_id bigint NOT NULL,
+    supplier_id bigint,
+    unit character varying(20) DEFAULT 'pc'::character varying NOT NULL,
+    cost_price numeric(10,2) DEFAULT 0 NOT NULL,
+    selling_price numeric(10,2) DEFAULT 0 NOT NULL,
+    quantity_on_hand integer DEFAULT 0 NOT NULL,
+    reorder_level integer DEFAULT 0 NOT NULL,
+    status character varying(20) DEFAULT 'active'::character varying NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT products_cost_price_check CHECK ((cost_price >= (0)::numeric)),
+    CONSTRAINT products_quantity_on_hand_check CHECK ((quantity_on_hand >= 0)),
+    CONSTRAINT products_selling_price_check CHECK ((selling_price >= (0)::numeric)),
+    CONSTRAINT products_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'inactive'::character varying])::text[])))
+);
+
+
+--
+-- Name: products_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+--
+
+ALTER TABLE inventory.products ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME inventory.products_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: purchase_order_items; Type: TABLE; Schema: inventory; Owner: -
+--
+
+CREATE TABLE inventory.purchase_order_items (
+    id bigint NOT NULL,
+    purchase_order_id bigint NOT NULL,
+    product_id bigint NOT NULL,
+    quantity integer NOT NULL,
+    unit_cost numeric(10,2) NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT purchase_order_items_quantity_check CHECK ((quantity > 0)),
+    CONSTRAINT purchase_order_items_unit_cost_check CHECK ((unit_cost >= (0)::numeric))
+);
+
+
+--
+-- Name: purchase_order_items_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+--
+
+ALTER TABLE inventory.purchase_order_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME inventory.purchase_order_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: purchase_orders; Type: TABLE; Schema: inventory; Owner: -
+--
+
+CREATE TABLE inventory.purchase_orders (
+    id bigint NOT NULL,
+    po_number character varying(30) NOT NULL,
+    supplier_id bigint NOT NULL,
+    order_date date DEFAULT CURRENT_DATE NOT NULL,
+    expected_date date,
+    status character varying(20) DEFAULT 'pending'::character varying NOT NULL,
+    notes text,
+    created_by bigint NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT purchase_orders_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'received'::character varying, 'cancelled'::character varying])::text[])))
+);
+
+
+--
+-- Name: purchase_orders_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+--
+
+ALTER TABLE inventory.purchase_orders ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME inventory.purchase_orders_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: stock_movements; Type: TABLE; Schema: inventory; Owner: -
+--
+
+CREATE TABLE inventory.stock_movements (
+    id bigint NOT NULL,
+    product_id bigint NOT NULL,
+    movement_type character varying(20) NOT NULL,
+    quantity integer NOT NULL,
+    reference_type character varying(30),
+    reference_id bigint,
+    reason text,
+    performed_by bigint NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT stock_movements_check CHECK (((((movement_type)::text = 'in'::text) AND (quantity > 0)) OR (((movement_type)::text = 'out'::text) AND (quantity < 0)) OR (((movement_type)::text = 'adjustment'::text) AND (quantity <> 0)))),
+    CONSTRAINT stock_movements_movement_type_check CHECK (((movement_type)::text = ANY ((ARRAY['in'::character varying, 'out'::character varying, 'adjustment'::character varying])::text[])))
+);
+
+
+--
+-- Name: stock_movements_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+--
+
+ALTER TABLE inventory.stock_movements ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME inventory.stock_movements_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: suppliers; Type: TABLE; Schema: inventory; Owner: -
+--
+
+CREATE TABLE inventory.suppliers (
+    id bigint NOT NULL,
+    name character varying(150) NOT NULL,
+    contact_person character varying(150),
+    phone character varying(20),
+    email character varying(150),
+    address text,
+    status character varying(20) DEFAULT 'active'::character varying NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT suppliers_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'inactive'::character varying])::text[])))
+);
+
+
+--
+-- Name: suppliers_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+--
+
+ALTER TABLE inventory.suppliers ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME inventory.suppliers_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: users; Type: TABLE; Schema: inventory; Owner: -
+--
+
+CREATE TABLE inventory.users (
+    id bigint NOT NULL,
+    employee_id bigint,
+    name character varying(150) NOT NULL,
+    username character varying(50) NOT NULL,
+    password character varying(255) NOT NULL,
+    role character varying(20) DEFAULT 'staff'::character varying NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    last_login_at timestamp without time zone,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'staff'::character varying])::text[])))
+);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+--
+
+ALTER TABLE inventory.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME inventory.users_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Data for Name: menu_categories; Type: TABLE DATA; Schema: canteen; Owner: -
+--
+
+COPY canteen.menu_categories (id, name, sort_order, created_at, updated_at) FROM stdin;
+1	Meals	1	2026-11-13 14:08:37.528128	2026-11-13 14:08:37.528128
+2	Drinks	2	2026-11-13 14:08:37.528128	2026-11-13 14:08:37.528128
+3	Snacks	3	2026-11-13 14:08:37.528128	2026-11-13 14:08:37.528128
+4	Desserts	4	2026-11-19 11:14:04.967502	2026-11-19 11:14:04.967502
 \.
 
 
 --
--- Data for Name: categories; Type: TABLE DATA; Schema: canteen_pos; Owner: -
+-- Data for Name: menu_items; Type: TABLE DATA; Schema: canteen; Owner: -
 --
 
-COPY canteen_pos.categories (category_id, category_name) FROM stdin;
-1	Meals
-2	Snacks
-3	Beverages
-4	Desserts
+COPY canteen.menu_items (id, category_id, product_id, name, description, price, is_available, created_at, updated_at) FROM stdin;
+1	2	1	Bottled Water 500ml	\N	15.00	t	2026-11-13 14:08:37.528128	2026-11-13 14:08:37.528128
+2	3	2	Chips	\N	20.00	t	2026-11-13 14:08:37.528128	2026-11-13 14:08:37.528128
+3	1	4	Chicken Adobo with Rice	\N	55.00	t	2026-11-13 14:08:37.528128	2026-11-13 14:08:37.528128
+4	1	5	Pork Sinigang with Rice	\N	80.00	t	2026-11-19 11:14:04.970631	2026-11-19 11:14:04.970631
+5	1	6	Beef Caldereta with Rice	\N	95.00	t	2026-11-19 11:14:04.971763	2026-11-19 11:14:04.971763
+6	3	7	Cheesy Lumpiang Shanghai (5 pcs)	\N	35.00	t	2026-11-19 11:14:04.972193	2026-11-19 11:14:04.972193
+7	2	8	House Blend Iced Tea (16 oz)	\N	20.00	t	2026-11-19 11:14:04.972629	2026-11-19 11:14:04.972629
+8	4	9	Special Halo-Halo	\N	50.00	t	2026-11-19 11:14:04.973039	2026-11-19 11:14:04.973039
 \.
 
 
 --
--- Data for Name: order_items; Type: TABLE DATA; Schema: canteen_pos; Owner: -
+-- Data for Name: payments; Type: TABLE DATA; Schema: canteen; Owner: -
 --
 
-COPY canteen_pos.order_items (order_item_id, order_id, product_id, quantity, unit_price) FROM stdin;
-1	1	7	1	15.00
-2	1	4	2	35.00
+COPY canteen.payments (id, sale_id, method, amount_tendered, change_given, reference_no, paid_at, created_at, updated_at) FROM stdin;
+1	1	cash	100.00	70.00	\N	2026-11-19 11:19:28	2026-11-19 11:19:28	2026-11-19 11:19:28
 \.
 
 
 --
--- Data for Name: orders; Type: TABLE DATA; Schema: canteen_pos; Owner: -
+-- Data for Name: sale_items; Type: TABLE DATA; Schema: canteen; Owner: -
 --
 
-COPY canteen_pos.orders (order_id, idno, customer_name, order_date, status, total_amount) FROM stdin;
-1	1004	Walk-in Customer	2026-11-14 13:40:59	paid	85.00
+COPY canteen.sale_items (id, sale_id, menu_item_id, item_name, unit_price, quantity, created_at, updated_at) FROM stdin;
+1	1	1	Bottled Water 500ml	15.00	2	2026-11-19 11:19:28	2026-11-19 11:19:28
 \.
 
 
 --
--- Data for Name: payments; Type: TABLE DATA; Schema: canteen_pos; Owner: -
+-- Data for Name: sales; Type: TABLE DATA; Schema: canteen; Owner: -
 --
 
-COPY canteen_pos.payments (payment_id, order_id, payment_method, amount_paid, change_amount, paid_at) FROM stdin;
-1	1	cash	85.00	0.00	2026-11-14 13:40:59
+COPY canteen.sales (id, receipt_no, shift_id, cashier_id, order_type, subtotal, discount, status, notes, sold_at, voided_by, voided_at, void_reason, created_at, updated_at) FROM stdin;
+1	RCP-20261119-0001	1	1	dine_in	30.00	0.00	voided	Test Student	2026-11-19 11:19:28	1	2026-11-19 11:19:28	Cashier Void & Refund	2026-11-19 11:19:28	2026-11-19 11:19:28
 \.
 
 
 --
--- Data for Name: products; Type: TABLE DATA; Schema: canteen_pos; Owner: -
+-- Data for Name: shifts; Type: TABLE DATA; Schema: canteen; Owner: -
 --
 
-COPY canteen_pos.products (product_id, category_id, product_name, price, stock_qty, is_available) FROM stdin;
-1	1	Pork Sinigang with Rice	80.00	25	t
-2	1	Chicken Adobo with Rice	75.00	30	t
-3	1	Beef Caldereta with Rice	95.00	15	t
-5	2	Crispy French Fries (Large)	45.00	20	t
-6	3	House Blend Iced Tea (16 oz)	20.00	50	t
-8	4	Special Halo-Halo	50.00	20	t
-9	4	Creamy Leche Flan	30.00	15	t
-7	3	Bottled Mineral Water (500ml)	15.00	59	t
-4	2	Cheesy Lumpiang Shanghai (5 pcs)	35.00	38	t
+COPY canteen.shifts (id, cashier_id, opened_at, closed_at, opening_cash, closing_cash, status, created_at, updated_at) FROM stdin;
+1	1	2026-11-19 11:13:10.716357	\N	1000.00	\N	open	2026-11-19 11:13:10.716357	2026-11-19 11:13:10.716357
 \.
 
 
 --
--- Name: categories_category_id_seq; Type: SEQUENCE SET; Schema: canteen_pos; Owner: -
+-- Data for Name: users; Type: TABLE DATA; Schema: canteen; Owner: -
 --
 
-SELECT pg_catalog.setval('canteen_pos.categories_category_id_seq', 4, true);
-
-
---
--- Name: order_items_order_item_id_seq; Type: SEQUENCE SET; Schema: canteen_pos; Owner: -
---
-
-SELECT pg_catalog.setval('canteen_pos.order_items_order_item_id_seq', 2, true);
+COPY canteen.users (id, employee_id, name, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
+1	1	Admin Cashier	admin@school.com	$2y$12$1xx454tkWF73K9WsthboJuExuDEQtNiUFiPfRSfKjKAlXMCGEnWL6	admin	t	\N	2026-11-19 11:11:08.790064	2026-11-19 11:11:08.790064
+\.
 
 
 --
--- Name: orders_order_id_seq; Type: SEQUENCE SET; Schema: canteen_pos; Owner: -
+-- Data for Name: attendance; Type: TABLE DATA; Schema: eis; Owner: -
 --
 
-SELECT pg_catalog.setval('canteen_pos.orders_order_id_seq', 1, true);
-
-
---
--- Name: payments_payment_id_seq; Type: SEQUENCE SET; Schema: canteen_pos; Owner: -
---
-
-SELECT pg_catalog.setval('canteen_pos.payments_payment_id_seq', 1, true);
+COPY eis.attendance (id, employee_id, work_date, time_in, time_out, status, remarks, created_at, updated_at) FROM stdin;
+\.
 
 
 --
--- Name: products_product_id_seq; Type: SEQUENCE SET; Schema: canteen_pos; Owner: -
+-- Data for Name: departments; Type: TABLE DATA; Schema: eis; Owner: -
 --
 
-SELECT pg_catalog.setval('canteen_pos.products_product_id_seq', 9, true);
-
-
---
--- Name: users users_pkey; Type: CONSTRAINT; Schema: app1; Owner: -
---
-
-ALTER TABLE ONLY app1.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (idno);
+COPY eis.departments (id, name, description, created_at, updated_at) FROM stdin;
+1	Canteen Services	School Canteen & Food Operations	2026-11-19 11:12:46.804818	2026-11-19 11:12:46.804818
+\.
 
 
 --
--- Name: users users_username_key; Type: CONSTRAINT; Schema: app1; Owner: -
+-- Data for Name: emergency_contacts; Type: TABLE DATA; Schema: eis; Owner: -
 --
 
-ALTER TABLE ONLY app1.users
+COPY eis.emergency_contacts (id, employee_id, name, relationship, phone, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: employees; Type: TABLE DATA; Schema: eis; Owner: -
+--
+
+COPY eis.employees (id, employee_no, first_name, middle_name, last_name, gender, birthdate, civil_status, email, phone, address, department_id, position_id, date_hired, employment_type, status, created_at, updated_at) FROM stdin;
+1	EMP-2026-001	Admin	\N	Cashier	Male	\N	Single	\N	\N	\N	1	1	2026-11-19	Regular	active	2026-11-19 11:13:10.529416	2026-11-19 11:13:10.529416
+\.
+
+
+--
+-- Data for Name: leave_requests; Type: TABLE DATA; Schema: eis; Owner: -
+--
+
+COPY eis.leave_requests (id, employee_id, leave_type_id, start_date, end_date, reason, status, approved_by, decided_at, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: leave_types; Type: TABLE DATA; Schema: eis; Owner: -
+--
+
+COPY eis.leave_types (id, name, days_allowed, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: payroll; Type: TABLE DATA; Schema: eis; Owner: -
+--
+
+COPY eis.payroll (id, employee_id, period_start, period_end, basic_pay, allowances, deductions, status, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: positions; Type: TABLE DATA; Schema: eis; Owner: -
+--
+
+COPY eis.positions (id, department_id, title, base_salary, created_at, updated_at) FROM stdin;
+1	1	Head Cashier	25000.00	2026-11-19 11:12:46.80779	2026-11-19 11:12:46.80779
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: eis; Owner: -
+--
+
+COPY eis.users (id, employee_id, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: categories; Type: TABLE DATA; Schema: inventory; Owner: -
+--
+
+COPY inventory.categories (id, name, description, created_at, updated_at) FROM stdin;
+1	Beverages	\N	2026-11-13 14:05:05.789571	2026-11-13 14:05:05.789571
+2	Snacks	\N	2026-11-13 14:05:05.789571	2026-11-13 14:05:05.789571
+3	Meals & Ingredients	\N	2026-11-13 14:05:05.789571	2026-11-13 14:05:05.789571
+4	Meals	Main Canteen Meals	2026-11-19 11:13:50.291211	2026-11-19 11:13:50.291211
+5	Desserts	Sweet treats and desserts	2026-11-19 11:13:50.293351	2026-11-19 11:13:50.293351
+\.
+
+
+--
+-- Data for Name: products; Type: TABLE DATA; Schema: inventory; Owner: -
+--
+
+COPY inventory.products (id, sku, barcode, name, description, category_id, supplier_id, unit, cost_price, selling_price, quantity_on_hand, reorder_level, status, created_at, updated_at) FROM stdin;
+2	SNK-001	\N	Chips	\N	2	\N	pack	12.00	20.00	30	10	active	2026-11-13 14:05:05.789571	2026-11-13 14:05:05.789571
+4	MEL-001	\N	Chicken Adobo with Rice	\N	4	\N	pc	45.00	55.00	35	10	active	2026-11-19 11:14:04.957862	2026-11-19 11:14:04.957862
+5	MEL-002	\N	Pork Sinigang with Rice	\N	4	\N	pc	60.00	80.00	25	10	active	2026-11-19 11:14:04.962669	2026-11-19 11:14:04.962669
+6	MEL-003	\N	Beef Caldereta with Rice	\N	4	\N	pc	75.00	95.00	20	10	active	2026-11-19 11:14:04.963086	2026-11-19 11:14:04.963086
+7	SNK-002	\N	Cheesy Lumpiang Shanghai (5 pcs)	\N	2	\N	pc	22.00	35.00	40	10	active	2026-11-19 11:14:04.96349	2026-11-19 11:14:04.96349
+8	BEV-002	\N	House Blend Iced Tea (16 oz)	\N	1	\N	pc	10.00	20.00	50	10	active	2026-11-19 11:14:04.963892	2026-11-19 11:14:04.963892
+9	DES-001	\N	Special Halo-Halo	\N	5	\N	pc	35.00	50.00	25	10	active	2026-11-19 11:14:04.964248	2026-11-19 11:14:04.964248
+1	BEV-001	\N	Bottled Water 500ml	\N	1	\N	bottle	10.00	15.00	50	10	active	2026-11-13 14:05:05.789571	2026-11-19 11:19:28
+\.
+
+
+--
+-- Data for Name: purchase_order_items; Type: TABLE DATA; Schema: inventory; Owner: -
+--
+
+COPY inventory.purchase_order_items (id, purchase_order_id, product_id, quantity, unit_cost, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: purchase_orders; Type: TABLE DATA; Schema: inventory; Owner: -
+--
+
+COPY inventory.purchase_orders (id, po_number, supplier_id, order_date, expected_date, status, notes, created_by, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: stock_movements; Type: TABLE DATA; Schema: inventory; Owner: -
+--
+
+COPY inventory.stock_movements (id, product_id, movement_type, quantity, reference_type, reference_id, reason, performed_by, created_at) FROM stdin;
+2	1	out	-2	canteen_sale	1	POS Sale #RCP-20261119-0001	1	2026-11-19 11:19:28
+3	1	in	2	canteen_sale_void	1	Voided Sale #RCP-20261119-0001	1	2026-11-19 11:19:28
+\.
+
+
+--
+-- Data for Name: suppliers; Type: TABLE DATA; Schema: inventory; Owner: -
+--
+
+COPY inventory.suppliers (id, name, contact_person, phone, email, address, status, created_at, updated_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: inventory; Owner: -
+--
+
+COPY inventory.users (id, employee_id, name, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
+1	\N	Canteen POS (system)	canteen_system	!	staff	f	\N	2026-11-13 14:08:05.040965	2026-11-13 14:08:05.040965
+\.
+
+
+--
+-- Name: menu_categories_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+--
+
+SELECT pg_catalog.setval('canteen.menu_categories_id_seq', 4, true);
+
+
+--
+-- Name: menu_items_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+--
+
+SELECT pg_catalog.setval('canteen.menu_items_id_seq', 8, true);
+
+
+--
+-- Name: payments_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+--
+
+SELECT pg_catalog.setval('canteen.payments_id_seq', 1, true);
+
+
+--
+-- Name: sale_items_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+--
+
+SELECT pg_catalog.setval('canteen.sale_items_id_seq', 1, true);
+
+
+--
+-- Name: sales_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+--
+
+SELECT pg_catalog.setval('canteen.sales_id_seq', 1, true);
+
+
+--
+-- Name: shifts_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+--
+
+SELECT pg_catalog.setval('canteen.shifts_id_seq', 1, true);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+--
+
+SELECT pg_catalog.setval('canteen.users_id_seq', 1, true);
+
+
+--
+-- Name: attendance_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.attendance_id_seq', 1, false);
+
+
+--
+-- Name: departments_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.departments_id_seq', 1, true);
+
+
+--
+-- Name: emergency_contacts_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.emergency_contacts_id_seq', 1, false);
+
+
+--
+-- Name: employees_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.employees_id_seq', 1, true);
+
+
+--
+-- Name: leave_requests_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.leave_requests_id_seq', 1, false);
+
+
+--
+-- Name: leave_types_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.leave_types_id_seq', 1, false);
+
+
+--
+-- Name: payroll_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.payroll_id_seq', 1, false);
+
+
+--
+-- Name: positions_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.positions_id_seq', 1, true);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+--
+
+SELECT pg_catalog.setval('eis.users_id_seq', 1, false);
+
+
+--
+-- Name: categories_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+--
+
+SELECT pg_catalog.setval('inventory.categories_id_seq', 5, true);
+
+
+--
+-- Name: products_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+--
+
+SELECT pg_catalog.setval('inventory.products_id_seq', 9, true);
+
+
+--
+-- Name: purchase_order_items_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+--
+
+SELECT pg_catalog.setval('inventory.purchase_order_items_id_seq', 1, false);
+
+
+--
+-- Name: purchase_orders_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+--
+
+SELECT pg_catalog.setval('inventory.purchase_orders_id_seq', 1, false);
+
+
+--
+-- Name: stock_movements_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+--
+
+SELECT pg_catalog.setval('inventory.stock_movements_id_seq', 3, true);
+
+
+--
+-- Name: suppliers_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+--
+
+SELECT pg_catalog.setval('inventory.suppliers_id_seq', 1, false);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+--
+
+SELECT pg_catalog.setval('inventory.users_id_seq', 1, true);
+
+
+--
+-- Name: menu_categories menu_categories_name_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.menu_categories
+    ADD CONSTRAINT menu_categories_name_key UNIQUE (name);
+
+
+--
+-- Name: menu_categories menu_categories_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.menu_categories
+    ADD CONSTRAINT menu_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: menu_items menu_items_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.menu_items
+    ADD CONSTRAINT menu_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: menu_items menu_items_product_id_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.menu_items
+    ADD CONSTRAINT menu_items_product_id_key UNIQUE (product_id);
+
+
+--
+-- Name: payments payments_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.payments
+    ADD CONSTRAINT payments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payments payments_sale_id_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.payments
+    ADD CONSTRAINT payments_sale_id_key UNIQUE (sale_id);
+
+
+--
+-- Name: sale_items sale_items_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.sale_items
+    ADD CONSTRAINT sale_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sales sales_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.sales
+    ADD CONSTRAINT sales_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sales sales_receipt_no_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.sales
+    ADD CONSTRAINT sales_receipt_no_key UNIQUE (receipt_no);
+
+
+--
+-- Name: shifts shifts_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.shifts
+    ADD CONSTRAINT shifts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.users
+    ADD CONSTRAINT users_employee_id_key UNIQUE (employee_id);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.users
     ADD CONSTRAINT users_username_key UNIQUE (username);
 
 
 --
--- Name: categories categories_pkey; Type: CONSTRAINT; Schema: canteen_pos; Owner: -
+-- Name: attendance attendance_employee_id_work_date_key; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-ALTER TABLE ONLY canteen_pos.categories
-    ADD CONSTRAINT categories_pkey PRIMARY KEY (category_id);
-
-
---
--- Name: order_items order_items_pkey; Type: CONSTRAINT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.order_items
-    ADD CONSTRAINT order_items_pkey PRIMARY KEY (order_item_id);
+ALTER TABLE ONLY eis.attendance
+    ADD CONSTRAINT attendance_employee_id_work_date_key UNIQUE (employee_id, work_date);
 
 
 --
--- Name: orders orders_pkey; Type: CONSTRAINT; Schema: canteen_pos; Owner: -
+-- Name: attendance attendance_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-ALTER TABLE ONLY canteen_pos.orders
-    ADD CONSTRAINT orders_pkey PRIMARY KEY (order_id);
-
-
---
--- Name: payments payments_order_id_key; Type: CONSTRAINT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.payments
-    ADD CONSTRAINT payments_order_id_key UNIQUE (order_id);
+ALTER TABLE ONLY eis.attendance
+    ADD CONSTRAINT attendance_pkey PRIMARY KEY (id);
 
 
 --
--- Name: payments payments_pkey; Type: CONSTRAINT; Schema: canteen_pos; Owner: -
+-- Name: departments departments_name_key; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-ALTER TABLE ONLY canteen_pos.payments
-    ADD CONSTRAINT payments_pkey PRIMARY KEY (payment_id);
-
-
---
--- Name: products products_pkey; Type: CONSTRAINT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.products
-    ADD CONSTRAINT products_pkey PRIMARY KEY (product_id);
+ALTER TABLE ONLY eis.departments
+    ADD CONSTRAINT departments_name_key UNIQUE (name);
 
 
 --
--- Name: idx_order_items_order; Type: INDEX; Schema: canteen_pos; Owner: -
+-- Name: departments departments_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-CREATE INDEX idx_order_items_order ON canteen_pos.order_items USING btree (order_id);
-
-
---
--- Name: idx_orders_cashier; Type: INDEX; Schema: canteen_pos; Owner: -
---
-
-CREATE INDEX idx_orders_cashier ON canteen_pos.orders USING btree (idno);
+ALTER TABLE ONLY eis.departments
+    ADD CONSTRAINT departments_pkey PRIMARY KEY (id);
 
 
 --
--- Name: idx_orders_date; Type: INDEX; Schema: canteen_pos; Owner: -
+-- Name: emergency_contacts emergency_contacts_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-CREATE INDEX idx_orders_date ON canteen_pos.orders USING btree (order_date);
-
-
---
--- Name: idx_orders_status; Type: INDEX; Schema: canteen_pos; Owner: -
---
-
-CREATE INDEX idx_orders_status ON canteen_pos.orders USING btree (status);
+ALTER TABLE ONLY eis.emergency_contacts
+    ADD CONSTRAINT emergency_contacts_pkey PRIMARY KEY (id);
 
 
 --
--- Name: idx_products_category; Type: INDEX; Schema: canteen_pos; Owner: -
+-- Name: employees employees_email_key; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-CREATE INDEX idx_products_category ON canteen_pos.products USING btree (category_id);
-
-
---
--- Name: order_items order_items_order_id_fkey; Type: FK CONSTRAINT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.order_items
-    ADD CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES canteen_pos.orders(order_id) ON DELETE CASCADE;
+ALTER TABLE ONLY eis.employees
+    ADD CONSTRAINT employees_email_key UNIQUE (email);
 
 
 --
--- Name: order_items order_items_product_id_fkey; Type: FK CONSTRAINT; Schema: canteen_pos; Owner: -
+-- Name: employees employees_employee_no_key; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-ALTER TABLE ONLY canteen_pos.order_items
-    ADD CONSTRAINT order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES canteen_pos.products(product_id) ON DELETE RESTRICT;
-
-
---
--- Name: orders orders_idno_fkey; Type: FK CONSTRAINT; Schema: canteen_pos; Owner: -
---
-
-ALTER TABLE ONLY canteen_pos.orders
-    ADD CONSTRAINT orders_idno_fkey FOREIGN KEY (idno) REFERENCES app1.users(idno) ON DELETE RESTRICT;
+ALTER TABLE ONLY eis.employees
+    ADD CONSTRAINT employees_employee_no_key UNIQUE (employee_no);
 
 
 --
--- Name: payments payments_order_id_fkey; Type: FK CONSTRAINT; Schema: canteen_pos; Owner: -
+-- Name: employees employees_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-ALTER TABLE ONLY canteen_pos.payments
-    ADD CONSTRAINT payments_order_id_fkey FOREIGN KEY (order_id) REFERENCES canteen_pos.orders(order_id) ON DELETE CASCADE;
+ALTER TABLE ONLY eis.employees
+    ADD CONSTRAINT employees_pkey PRIMARY KEY (id);
 
 
 --
--- Name: products products_category_id_fkey; Type: FK CONSTRAINT; Schema: canteen_pos; Owner: -
+-- Name: leave_requests leave_requests_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
 --
 
-ALTER TABLE ONLY canteen_pos.products
-    ADD CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES canteen_pos.categories(category_id) ON DELETE SET NULL;
+ALTER TABLE ONLY eis.leave_requests
+    ADD CONSTRAINT leave_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: leave_types leave_types_name_key; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.leave_types
+    ADD CONSTRAINT leave_types_name_key UNIQUE (name);
+
+
+--
+-- Name: leave_types leave_types_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.leave_types
+    ADD CONSTRAINT leave_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payroll payroll_employee_id_period_start_period_end_key; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.payroll
+    ADD CONSTRAINT payroll_employee_id_period_start_period_end_key UNIQUE (employee_id, period_start, period_end);
+
+
+--
+-- Name: payroll payroll_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.payroll
+    ADD CONSTRAINT payroll_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: positions positions_department_id_title_key; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.positions
+    ADD CONSTRAINT positions_department_id_title_key UNIQUE (department_id, title);
+
+
+--
+-- Name: positions positions_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.positions
+    ADD CONSTRAINT positions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.users
+    ADD CONSTRAINT users_employee_id_key UNIQUE (employee_id);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.users
+    ADD CONSTRAINT users_username_key UNIQUE (username);
+
+
+--
+-- Name: categories categories_name_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.categories
+    ADD CONSTRAINT categories_name_key UNIQUE (name);
+
+
+--
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.categories
+    ADD CONSTRAINT categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: products products_barcode_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.products
+    ADD CONSTRAINT products_barcode_key UNIQUE (barcode);
+
+
+--
+-- Name: products products_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.products
+    ADD CONSTRAINT products_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: products products_sku_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.products
+    ADD CONSTRAINT products_sku_key UNIQUE (sku);
+
+
+--
+-- Name: purchase_order_items purchase_order_items_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.purchase_order_items
+    ADD CONSTRAINT purchase_order_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: purchase_order_items purchase_order_items_purchase_order_id_product_id_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.purchase_order_items
+    ADD CONSTRAINT purchase_order_items_purchase_order_id_product_id_key UNIQUE (purchase_order_id, product_id);
+
+
+--
+-- Name: purchase_orders purchase_orders_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.purchase_orders
+    ADD CONSTRAINT purchase_orders_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: purchase_orders purchase_orders_po_number_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.purchase_orders
+    ADD CONSTRAINT purchase_orders_po_number_key UNIQUE (po_number);
+
+
+--
+-- Name: stock_movements stock_movements_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.stock_movements
+    ADD CONSTRAINT stock_movements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: suppliers suppliers_name_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.suppliers
+    ADD CONSTRAINT suppliers_name_key UNIQUE (name);
+
+
+--
+-- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.suppliers
+    ADD CONSTRAINT suppliers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.users
+    ADD CONSTRAINT users_employee_id_key UNIQUE (employee_id);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.users
+    ADD CONSTRAINT users_username_key UNIQUE (username);
+
+
+--
+-- Name: idx_sale_items_sale; Type: INDEX; Schema: canteen; Owner: -
+--
+
+CREATE INDEX idx_sale_items_sale ON canteen.sale_items USING btree (sale_id);
+
+
+--
+-- Name: idx_sales_cashier; Type: INDEX; Schema: canteen; Owner: -
+--
+
+CREATE INDEX idx_sales_cashier ON canteen.sales USING btree (cashier_id);
+
+
+--
+-- Name: idx_sales_sold_at; Type: INDEX; Schema: canteen; Owner: -
+--
+
+CREATE INDEX idx_sales_sold_at ON canteen.sales USING btree (sold_at);
+
+
+--
+-- Name: one_open_shift_per_cashier; Type: INDEX; Schema: canteen; Owner: -
+--
+
+CREATE UNIQUE INDEX one_open_shift_per_cashier ON canteen.shifts USING btree (cashier_id) WHERE ((status)::text = 'open'::text);
+
+
+--
+-- Name: idx_movements_product; Type: INDEX; Schema: inventory; Owner: -
+--
+
+CREATE INDEX idx_movements_product ON inventory.stock_movements USING btree (product_id, created_at);
+
+
+--
+-- Name: idx_products_category; Type: INDEX; Schema: inventory; Owner: -
+--
+
+CREATE INDEX idx_products_category ON inventory.products USING btree (category_id);
+
+
+--
+-- Name: menu_items menu_items_category_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.menu_items
+    ADD CONSTRAINT menu_items_category_id_fkey FOREIGN KEY (category_id) REFERENCES canteen.menu_categories(id);
+
+
+--
+-- Name: menu_items menu_items_product_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.menu_items
+    ADD CONSTRAINT menu_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES inventory.products(id);
+
+
+--
+-- Name: payments payments_sale_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.payments
+    ADD CONSTRAINT payments_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES canteen.sales(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sale_items sale_items_menu_item_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.sale_items
+    ADD CONSTRAINT sale_items_menu_item_id_fkey FOREIGN KEY (menu_item_id) REFERENCES canteen.menu_items(id);
+
+
+--
+-- Name: sale_items sale_items_sale_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.sale_items
+    ADD CONSTRAINT sale_items_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES canteen.sales(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sales sales_cashier_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.sales
+    ADD CONSTRAINT sales_cashier_id_fkey FOREIGN KEY (cashier_id) REFERENCES eis.employees(id);
+
+
+--
+-- Name: sales sales_shift_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.sales
+    ADD CONSTRAINT sales_shift_id_fkey FOREIGN KEY (shift_id) REFERENCES canteen.shifts(id);
+
+
+--
+-- Name: sales sales_voided_by_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.sales
+    ADD CONSTRAINT sales_voided_by_fkey FOREIGN KEY (voided_by) REFERENCES eis.employees(id);
+
+
+--
+-- Name: shifts shifts_cashier_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.shifts
+    ADD CONSTRAINT shifts_cashier_id_fkey FOREIGN KEY (cashier_id) REFERENCES eis.employees(id);
+
+
+--
+-- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+--
+
+ALTER TABLE ONLY canteen.users
+    ADD CONSTRAINT users_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES eis.employees(id);
+
+
+--
+-- Name: attendance attendance_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.attendance
+    ADD CONSTRAINT attendance_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES eis.employees(id);
+
+
+--
+-- Name: emergency_contacts emergency_contacts_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.emergency_contacts
+    ADD CONSTRAINT emergency_contacts_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES eis.employees(id) ON DELETE CASCADE;
+
+
+--
+-- Name: employees employees_department_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.employees
+    ADD CONSTRAINT employees_department_id_fkey FOREIGN KEY (department_id) REFERENCES eis.departments(id);
+
+
+--
+-- Name: employees employees_position_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.employees
+    ADD CONSTRAINT employees_position_id_fkey FOREIGN KEY (position_id) REFERENCES eis.positions(id);
+
+
+--
+-- Name: leave_requests leave_requests_approved_by_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.leave_requests
+    ADD CONSTRAINT leave_requests_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES eis.employees(id);
+
+
+--
+-- Name: leave_requests leave_requests_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.leave_requests
+    ADD CONSTRAINT leave_requests_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES eis.employees(id);
+
+
+--
+-- Name: leave_requests leave_requests_leave_type_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.leave_requests
+    ADD CONSTRAINT leave_requests_leave_type_id_fkey FOREIGN KEY (leave_type_id) REFERENCES eis.leave_types(id);
+
+
+--
+-- Name: payroll payroll_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.payroll
+    ADD CONSTRAINT payroll_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES eis.employees(id);
+
+
+--
+-- Name: positions positions_department_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.positions
+    ADD CONSTRAINT positions_department_id_fkey FOREIGN KEY (department_id) REFERENCES eis.departments(id);
+
+
+--
+-- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+--
+
+ALTER TABLE ONLY eis.users
+    ADD CONSTRAINT users_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES eis.employees(id);
+
+
+--
+-- Name: products products_category_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.products
+    ADD CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES inventory.categories(id);
+
+
+--
+-- Name: products products_supplier_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.products
+    ADD CONSTRAINT products_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES inventory.suppliers(id);
+
+
+--
+-- Name: purchase_order_items purchase_order_items_product_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.purchase_order_items
+    ADD CONSTRAINT purchase_order_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES inventory.products(id);
+
+
+--
+-- Name: purchase_order_items purchase_order_items_purchase_order_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.purchase_order_items
+    ADD CONSTRAINT purchase_order_items_purchase_order_id_fkey FOREIGN KEY (purchase_order_id) REFERENCES inventory.purchase_orders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: purchase_orders purchase_orders_created_by_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.purchase_orders
+    ADD CONSTRAINT purchase_orders_created_by_fkey FOREIGN KEY (created_by) REFERENCES inventory.users(id);
+
+
+--
+-- Name: purchase_orders purchase_orders_supplier_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.purchase_orders
+    ADD CONSTRAINT purchase_orders_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES inventory.suppliers(id);
+
+
+--
+-- Name: stock_movements stock_movements_performed_by_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.stock_movements
+    ADD CONSTRAINT stock_movements_performed_by_fkey FOREIGN KEY (performed_by) REFERENCES inventory.users(id);
+
+
+--
+-- Name: stock_movements stock_movements_product_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.stock_movements
+    ADD CONSTRAINT stock_movements_product_id_fkey FOREIGN KEY (product_id) REFERENCES inventory.products(id);
+
+
+--
+-- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+--
+
+ALTER TABLE ONLY inventory.users
+    ADD CONSTRAINT users_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES eis.employees(id);
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict peyPwz0L6b34Gtv0Gp9lcA0ZCpEGnDcKVRSdPq5zf1DzamIXPexU5V5fmLU28cC
+\unrestrict m4OOIVmULuxlIn0wnGYWRppzNZsccg103ICEm0sgatR1gfQhGblKZJjdcPJdCuf
 

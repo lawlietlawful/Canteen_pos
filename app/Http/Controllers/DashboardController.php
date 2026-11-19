@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InventoryProduct;
 use App\Models\Order;
 use App\Models\Product;
 use Carbon\Carbon;
@@ -18,40 +19,39 @@ class DashboardController extends Controller
         // 1. Today's sales total and orders count
         $today = Carbon::today('Asia/Manila')->toDateString();
 
-        $todayStats = Order::where('status', 'paid')
-            ->whereDate('order_date', $today)
-            ->selectRaw('COALESCE(SUM(total_amount), 0) as total_sales, COUNT(*) as order_count')
+        $todayStats = Order::where('status', 'completed')
+            ->whereDate('sold_at', $today)
+            ->selectRaw('COALESCE(SUM(total), 0) as total_sales, COUNT(*) as order_count')
             ->first();
 
         $todaySales = (float)($todayStats->total_sales ?? 0);
         $todayOrders = (int)($todayStats->order_count ?? 0);
 
-        // 2. Active products and low stock count
+        // 2. Active products and low stock count from inventory
         $activeProducts = Product::where('is_available', true)->count();
-        $lowStockCount = Product::where('stock_qty', '<=', 10)->count();
+        $lowStockCount = InventoryProduct::where('quantity_on_hand', '<=', 10)->count();
 
-        // 3. Low-stock list (stock_qty <= 10)
-        $lowStockProducts = Product::with('category')
-            ->where('stock_qty', '<=', 10)
-            ->orderBy('stock_qty', 'asc')
-            ->orderBy('product_name', 'asc')
-            ->take(10)
+        // 3. Low-stock list from Group 2's inventory
+        $lowStockProducts = Product::with(['category', 'inventoryProduct'])
+            ->whereHas('inventoryProduct', function ($q) {
+                $q->where('quantity_on_hand', '<=', 10);
+            })
             ->get();
 
         // 4. Top 5 selling products (by total quantity sold)
-        $topProducts = DB::table('canteen_pos.order_items as oi')
-            ->join('canteen_pos.orders as o', 'oi.order_id', '=', 'o.order_id')
-            ->join('canteen_pos.products as p', 'oi.product_id', '=', 'p.product_id')
-            ->leftJoin('canteen_pos.categories as c', 'p.category_id', '=', 'c.category_id')
-            ->where('o.status', 'paid')
+        $topProducts = DB::table('canteen.sale_items as si')
+            ->join('canteen.sales as s', 'si.sale_id', '=', 's.id')
+            ->join('canteen.menu_items as m', 'si.menu_item_id', '=', 'm.id')
+            ->leftJoin('canteen.menu_categories as c', 'm.category_id', '=', 'c.id')
+            ->where('s.status', 'completed')
             ->select(
-                'p.product_id',
-                'p.product_name',
-                DB::raw("COALESCE(c.category_name, 'General') as category_name"),
-                DB::raw('SUM(oi.quantity) as total_sold'),
-                DB::raw('SUM(oi.quantity * oi.unit_price) as total_revenue')
+                'm.id as product_id',
+                'm.name as product_name',
+                DB::raw("COALESCE(c.name, 'General') as category_name"),
+                DB::raw('SUM(si.quantity) as total_sold'),
+                DB::raw('SUM(si.unit_price * si.quantity) as total_revenue')
             )
-            ->groupBy('p.product_id', 'p.product_name', 'c.category_name')
+            ->groupBy('m.id', 'm.name', 'c.name')
             ->orderByDesc('total_sold')
             ->take(5)
             ->get();
@@ -63,9 +63,9 @@ class DashboardController extends Controller
             $dateStr = $date->toDateString();
             $label = $date->format('M d');
 
-            $dayStats = Order::where('status', 'paid')
-                ->whereDate('order_date', $dateStr)
-                ->selectRaw('COALESCE(SUM(total_amount), 0) as total, COUNT(*) as count')
+            $dayStats = Order::where('status', 'completed')
+                ->whereDate('sold_at', $dateStr)
+                ->selectRaw('COALESCE(SUM(total), 0) as total, COUNT(*) as count')
                 ->first();
 
             $last7Days[] = [
@@ -77,15 +77,15 @@ class DashboardController extends Controller
         }
 
         // 6. Payment breakdown (Cash vs GCash)
-        $paymentStats = DB::table('canteen_pos.payments as p')
-            ->join('canteen_pos.orders as o', 'p.order_id', '=', 'o.order_id')
-            ->where('o.status', 'paid')
+        $paymentStats = DB::table('canteen.payments as p')
+            ->join('canteen.sales as s', 'p.sale_id', '=', 's.id')
+            ->where('s.status', 'completed')
             ->select(
-                'p.payment_method',
+                'p.method as payment_method',
                 DB::raw('COUNT(*) as total_orders'),
-                DB::raw('COALESCE(SUM(o.total_amount), 0) as total_amount')
+                DB::raw('COALESCE(SUM(s.total), 0) as total_amount')
             )
-            ->groupBy('p.payment_method')
+            ->groupBy('p.method')
             ->get()
             ->keyBy('payment_method');
 
@@ -109,4 +109,3 @@ class DashboardController extends Controller
         ));
     }
 }
-

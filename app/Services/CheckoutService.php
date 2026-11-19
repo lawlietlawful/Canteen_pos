@@ -2,23 +2,28 @@
 
 namespace App\Services;
 
+use App\Models\InventoryProduct;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\Shift;
+use App\Models\User;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CheckoutService
 {
     /**
      * Execute POS order checkout inside a single atomic database transaction.
+     * Integrates with Group 2's inventory.products and logs stock movements.
      *
      * @param  array   $items        Array of ['product_id' => int, 'quantity' => int]
      * @param  string  $paymentMethod 'cash' or 'gcash'
      * @param  float   $amountPaid   Amount tendered
-     * @param  string  $cashierIdno  Cashier's idno from app1.users
-     * @param  string|null $customerName Optional customer name
+     * @param  int|string $cashierIdentifier Cashier ID or username
+     * @param  string|null $customerName Optional customer name/notes
      * @return Order
      * @throws Exception
      */
@@ -26,7 +31,7 @@ class CheckoutService
         array $items,
         string $paymentMethod,
         float $amountPaid,
-        string $cashierIdno,
+        $cashierIdentifier,
         ?string $customerName = null
     ): Order {
         if (empty($items)) {
@@ -38,49 +43,86 @@ class CheckoutService
             throw new Exception("Invalid payment method. Only Cash and GCash are accepted.");
         }
 
-        return DB::transaction(function () use ($items, $paymentMethod, $amountPaid, $cashierIdno, $customerName) {
-            $verifiedItems = [];
-            $totalAmount = 0.0;
+        return DB::transaction(function () use ($items, $paymentMethod, $amountPaid, $cashierIdentifier, $customerName) {
+            // 1. Resolve Cashier
+            $cashier = User::where('id', $cashierIdentifier)
+                ->orWhere('username', $cashierIdentifier)
+                ->first();
 
-            // (a) Re-read each product with lockForUpdate() - never trust prices from browser!
+            $cashierEmpId = $cashier && $cashier->employee_id ? $cashier->employee_id : 1;
+
+            // 2. Ensure an active open shift exists
+            $shift = Shift::where('cashier_id', $cashierEmpId)
+                ->where('status', 'open')
+                ->latest('id')
+                ->first();
+
+            if (!$shift) {
+                $shift = Shift::create([
+                    'cashier_id'   => $cashierEmpId,
+                    'opening_cash' => 0.00,
+                    'status'       => 'open',
+                    'opened_at'    => now(),
+                ]);
+            }
+
+            $verifiedItems = [];
+            $subtotal = 0.0;
+
+            // 3. Verify each menu item & lock inventory product with pessimistic locking
             foreach ($items as $item) {
-                $productId = (int)($item['product_id'] ?? 0);
+                $menuItemId = (int)($item['product_id'] ?? 0);
                 $qty = (int)($item['quantity'] ?? 0);
 
-                if ($productId <= 0 || $qty <= 0) {
+                if ($menuItemId <= 0 || $qty <= 0) {
                     throw new Exception("Invalid item or quantity in order payload.");
                 }
 
-                $product = Product::where('product_id', $productId)
+                $menuItem = Product::where('id', $menuItemId)
                     ->lockForUpdate()
                     ->first();
 
-                if (!$product) {
-                    throw new Exception("Product ID #{$productId} not found in database.");
+                if (!$menuItem) {
+                    throw new Exception("Menu item #{$menuItemId} not found.");
                 }
 
-                if (!$product->is_available) {
-                    throw new Exception("Product '{$product->product_name}' is currently marked as unavailable.");
+                if (!$menuItem->is_available) {
+                    throw new Exception("'{$menuItem->name}' is currently marked unavailable.");
                 }
 
-                if ($product->stock_qty < $qty) {
-                    throw new Exception("Insufficient stock for '{$product->product_name}'. Available: {$product->stock_qty}, Requested: {$qty}.");
+                // If linked to Group 2's inventory product, lock and check stock
+                $invProduct = null;
+                if ($menuItem->product_id) {
+                    $invProduct = InventoryProduct::where('id', $menuItem->product_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$invProduct) {
+                        throw new Exception("Warehouse inventory record missing for '{$menuItem->name}'.");
+                    }
+
+                    if ($invProduct->quantity_on_hand < $qty) {
+                        throw new Exception("Insufficient stock for '{$menuItem->name}'. Available: {$invProduct->quantity_on_hand}, Requested: {$qty}.");
+                    }
                 }
 
-                $unitPrice = (float)$product->price;
+                $unitPrice = (float)$menuItem->price;
                 $lineTotal = round($unitPrice * $qty, 2);
-                $totalAmount += $lineTotal;
+                $subtotal += $lineTotal;
 
                 $verifiedItems[] = [
-                    'product'    => $product,
-                    'quantity'   => $qty,
-                    'unit_price' => $unitPrice,
+                    'menu_item'   => $menuItem,
+                    'inv_product' => $invProduct,
+                    'quantity'    => $qty,
+                    'unit_price'  => $unitPrice,
                 ];
             }
 
-            $totalAmount = round($totalAmount, 2);
+            $subtotal = round($subtotal, 2);
+            $discount = 0.00;
+            $totalAmount = $subtotal - $discount;
 
-            // Validate Payment Calculations
+            // 4. Validate Tendered Amount
             $finalAmountPaid = 0.0;
             $changeAmount = 0.0;
 
@@ -96,40 +138,67 @@ class CheckoutService
                 $changeAmount = 0.00;
             }
 
-            // (b) Create Order record
+            // 5. Generate unique receipt number (e.g. RCP-20261119-0001)
+            $todayPrefix = 'RCP-' . date('Ymd') . '-';
+            $latestReceipt = DB::table('canteen.sales')
+                ->where('receipt_no', 'LIKE', $todayPrefix . '%')
+                ->count();
+            $receiptNo = $todayPrefix . str_pad($latestReceipt + 1, 4, '0', STR_PAD_LEFT);
+
+            // 6. Create Sale in canteen.sales
+            // Note: 'total' is a PostgreSQL GENERATED ALWAYS AS (subtotal - discount) STORED column
             $order = Order::create([
-                'idno'          => $cashierIdno,
-                'customer_name' => trim($customerName ?: 'Walk-in Customer'),
-                'order_date'    => now(),
-                'status'        => 'paid',
-                'total_amount'  => $totalAmount,
+                'receipt_no' => $receiptNo,
+                'shift_id'   => $shift->id,
+                'cashier_id' => $cashierEmpId,
+                'order_type' => 'dine_in',
+                'subtotal'   => $subtotal,
+                'discount'   => $discount,
+                'status'     => 'completed',
+                'notes'      => trim($customerName ?: 'Walk-in Customer'),
+                'sold_at'    => now(),
             ]);
 
-            // (c) Create OrderItems and Deduct Inventory Stock
+            // 7. Create Sale Items and Deduct Inventory Stock
             foreach ($verifiedItems as $v) {
-                // Note: line_total is a PostgreSQL generated column; never insert it!
+                // Note: 'line_total' is GENERATED ALWAYS AS (unit_price * quantity) STORED
                 OrderItem::create([
-                    'order_id'   => $order->order_id,
-                    'product_id' => $v['product']->product_id,
-                    'quantity'   => $v['quantity'],
-                    'unit_price' => $v['unit_price'],
+                    'sale_id'      => $order->id,
+                    'menu_item_id' => $v['menu_item']->id,
+                    'item_name'    => $v['menu_item']->name,
+                    'unit_price'   => $v['unit_price'],
+                    'quantity'     => $v['quantity'],
                 ]);
 
-                // Deduct stock
-                $v['product']->decrement('stock_qty', $v['quantity']);
+                // Deduct stock from Group 2's inventory.products and log movement
+                if ($v['inv_product']) {
+                    $v['inv_product']->decrement('quantity_on_hand', $v['quantity']);
+
+                    // Log stock movement for Group 2
+                    DB::table('inventory.stock_movements')->insert([
+                        'product_id'     => $v['inv_product']->id,
+                        'movement_type'  => 'out',
+                        'quantity'       => -$v['quantity'],
+                        'reference_type' => 'canteen_sale',
+                        'reference_id'   => $order->id,
+                        'reason'         => "POS Sale #{$receiptNo}",
+                        'performed_by'   => 1, // System staff ID in inventory.users
+                        'created_at'     => now(),
+                    ]);
+                }
             }
 
-            // (d) Create Payment record
+            // 8. Create Payment Record in canteen.payments
             Payment::create([
-                'order_id'       => $order->order_id,
-                'payment_method' => $paymentMethod,
-                'amount_paid'    => $finalAmountPaid,
-                'change_amount'  => $changeAmount,
-                'paid_at'        => now(),
+                'sale_id'         => $order->id,
+                'method'          => $paymentMethod,
+                'amount_tendered' => $finalAmountPaid,
+                'change_given'    => $changeAmount,
+                'reference_no'    => $paymentMethod === 'gcash' ? 'GCASH-' . strtoupper(Str::random(8)) : null,
+                'paid_at'         => now(),
             ]);
 
             return $order;
         });
     }
 }
-

@@ -10,32 +10,67 @@ class Payment extends Model
 {
     use HasFactory;
 
-    protected $table = 'canteen_pos.payments';
+    /**
+     * Centralized canteen payments table
+     */
+    protected $table = 'canteen.payments';
 
-    protected $primaryKey = 'payment_id';
+    protected $primaryKey = 'id';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
-        'order_id',
-        'payment_method',
-        'amount_paid',
-        'change_amount',
+        'sale_id',
+        'method',
+        'amount_tendered',
+        'change_given',
+        'reference_no',
         'paid_at',
     ];
 
     protected $casts = [
-        'amount_paid'   => 'decimal:2',
-        'change_amount' => 'decimal:2',
-        'paid_at'       => 'datetime',
+        'amount_tendered' => 'decimal:2',
+        'change_given'    => 'decimal:2',
+        'paid_at'         => 'datetime',
     ];
 
     /**
-     * Payment belongs to an Order
+     * Backward-compatible payment_id accessor
+     */
+    public function getPaymentIdAttribute(): int
+    {
+        return $this->id;
+    }
+
+    /**
+     * Backward-compatible payment_method accessor
+     */
+    public function getPaymentMethodAttribute(): string
+    {
+        return $this->method;
+    }
+
+    /**
+     * Backward-compatible amount_paid accessor
+     */
+    public function getAmountPaidAttribute()
+    {
+        return $this->amount_tendered;
+    }
+
+    /**
+     * Backward-compatible change_amount accessor
+     */
+    public function getChangeAmountAttribute()
+    {
+        return $this->change_given;
+    }
+
+    /**
+     * Payment belongs to Sale (Order)
      */
     public function order(): BelongsTo
     {
-        return $this->belongsTo(Order::class, 'order_id', 'order_id');
+        return $this->belongsTo(Order::class, 'sale_id', 'id');
     }
 }
-
