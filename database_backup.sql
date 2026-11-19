@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict m4OOIVmULuxlIn0wnGYWRppzNZsccg103ICEm0sgatR1gfQhGblKZJjdcPJdCuf
+\restrict 5XSYpxtS2vaFTLidbw62hxEh7TKIDxck7ggtgGpKpq3YkQhUzhkjO0jc8PmD9wa
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -1863,5 +1863,5 @@ ALTER TABLE ONLY inventory.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict m4OOIVmULuxlIn0wnGYWRppzNZsccg103ICEm0sgatR1gfQhGblKZJjdcPJdCuf
+\unrestrict 5XSYpxtS2vaFTLidbw62hxEh7TKIDxck7ggtgGpKpq3YkQhUzhkjO0jc8PmD9wa
 
