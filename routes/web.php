@@ -7,11 +7,16 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Inventory\InventoryDashboardController;
+use App\Http\Controllers\Inventory\WarehouseProductController;
+use App\Http\Controllers\Inventory\StockMovementController;
+use App\Http\Controllers\Inventory\SupplierController;
+use App\Http\Controllers\Inventory\PurchaseOrderController;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes - Canteen Dawn POS
+| Web Routes - Canteen Dawn POS & Centralized Inventory Hub
 |--------------------------------------------------------------------------
 */
 
@@ -33,6 +38,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/', function () {
         return redirect()->route('dashboard');
     });
+
+    // ==========================================
+    // CANTEEN POS MODULE
+    // ==========================================
 
     // 1. Dashboard (Chart.js CDN)
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -61,4 +70,30 @@ Route::middleware('auth')->group(function () {
     // 7. Sales Reports & CSV Export
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export-csv', [ReportController::class, 'exportCsv'])->name('reports.export');
+
+    // ==========================================
+    // INVENTORY MANAGEMENT MODULE (Group 2 Centralized)
+    // ==========================================
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        // Inventory Dashboard
+        Route::get('/', [InventoryDashboardController::class, 'index'])->name('dashboard');
+
+        // Warehouse Products Catalog
+        Route::resource('products', WarehouseProductController::class)->except(['show']);
+
+        // Stock Movements Audit Ledger
+        Route::get('/movements', [StockMovementController::class, 'index'])->name('movements.index');
+        Route::post('/movements', [StockMovementController::class, 'store'])->name('movements.store');
+
+        // Suppliers Directory
+        Route::resource('suppliers', SupplierController::class)->except(['create', 'show', 'edit']);
+
+        // Purchase Orders (Procurement)
+        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+        Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchase-orders.create');
+        Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchase-orders.store');
+        Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->name('purchase-orders.show');
+        Route::post('/purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
+        Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
+    });
 });

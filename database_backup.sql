@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 5XSYpxtS2vaFTLidbw62hxEh7TKIDxck7ggtgGpKpq3YkQhUzhkjO0jc8PmD9wa
+\restrict qauPFOcGZBM3Fi9KwuR573VX6v0JfZLT8VvwuMqNxlcEJFbaX1NwM9oM2ZYPYUC
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -19,29 +19,143 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+ALTER TABLE IF EXISTS ONLY inventory.users DROP CONSTRAINT IF EXISTS users_employee_id_fkey;
+ALTER TABLE IF EXISTS ONLY inventory.stock_movements DROP CONSTRAINT IF EXISTS stock_movements_product_id_fkey;
+ALTER TABLE IF EXISTS ONLY inventory.stock_movements DROP CONSTRAINT IF EXISTS stock_movements_performed_by_fkey;
+ALTER TABLE IF EXISTS ONLY inventory.purchase_orders DROP CONSTRAINT IF EXISTS purchase_orders_supplier_id_fkey;
+ALTER TABLE IF EXISTS ONLY inventory.purchase_orders DROP CONSTRAINT IF EXISTS purchase_orders_created_by_fkey;
+ALTER TABLE IF EXISTS ONLY inventory.purchase_order_items DROP CONSTRAINT IF EXISTS purchase_order_items_purchase_order_id_fkey;
+ALTER TABLE IF EXISTS ONLY inventory.purchase_order_items DROP CONSTRAINT IF EXISTS purchase_order_items_product_id_fkey;
+ALTER TABLE IF EXISTS ONLY inventory.products DROP CONSTRAINT IF EXISTS products_supplier_id_fkey;
+ALTER TABLE IF EXISTS ONLY inventory.products DROP CONSTRAINT IF EXISTS products_category_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.users DROP CONSTRAINT IF EXISTS users_employee_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.positions DROP CONSTRAINT IF EXISTS positions_department_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.payroll DROP CONSTRAINT IF EXISTS payroll_employee_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.leave_requests DROP CONSTRAINT IF EXISTS leave_requests_leave_type_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.leave_requests DROP CONSTRAINT IF EXISTS leave_requests_employee_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.leave_requests DROP CONSTRAINT IF EXISTS leave_requests_approved_by_fkey;
+ALTER TABLE IF EXISTS ONLY eis.employees DROP CONSTRAINT IF EXISTS employees_position_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.employees DROP CONSTRAINT IF EXISTS employees_department_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.emergency_contacts DROP CONSTRAINT IF EXISTS emergency_contacts_employee_id_fkey;
+ALTER TABLE IF EXISTS ONLY eis.attendance DROP CONSTRAINT IF EXISTS attendance_employee_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.users DROP CONSTRAINT IF EXISTS users_employee_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.shifts DROP CONSTRAINT IF EXISTS shifts_cashier_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.sales DROP CONSTRAINT IF EXISTS sales_voided_by_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.sales DROP CONSTRAINT IF EXISTS sales_shift_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.sales DROP CONSTRAINT IF EXISTS sales_cashier_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.sale_items DROP CONSTRAINT IF EXISTS sale_items_sale_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.sale_items DROP CONSTRAINT IF EXISTS sale_items_menu_item_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.payments DROP CONSTRAINT IF EXISTS payments_sale_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.menu_items DROP CONSTRAINT IF EXISTS menu_items_product_id_fkey;
+ALTER TABLE IF EXISTS ONLY canteen.menu_items DROP CONSTRAINT IF EXISTS menu_items_category_id_fkey;
+DROP INDEX IF EXISTS inventory.idx_products_category;
+DROP INDEX IF EXISTS inventory.idx_movements_product;
+DROP INDEX IF EXISTS canteen.one_open_shift_per_cashier;
+DROP INDEX IF EXISTS canteen.idx_sales_sold_at;
+DROP INDEX IF EXISTS canteen.idx_sales_cashier;
+DROP INDEX IF EXISTS canteen.idx_sale_items_sale;
+ALTER TABLE IF EXISTS ONLY inventory.users DROP CONSTRAINT IF EXISTS users_username_key;
+ALTER TABLE IF EXISTS ONLY inventory.users DROP CONSTRAINT IF EXISTS users_pkey;
+ALTER TABLE IF EXISTS ONLY inventory.users DROP CONSTRAINT IF EXISTS users_employee_id_key;
+ALTER TABLE IF EXISTS ONLY inventory.suppliers DROP CONSTRAINT IF EXISTS suppliers_pkey;
+ALTER TABLE IF EXISTS ONLY inventory.suppliers DROP CONSTRAINT IF EXISTS suppliers_name_key;
+ALTER TABLE IF EXISTS ONLY inventory.stock_movements DROP CONSTRAINT IF EXISTS stock_movements_pkey;
+ALTER TABLE IF EXISTS ONLY inventory.purchase_orders DROP CONSTRAINT IF EXISTS purchase_orders_po_number_key;
+ALTER TABLE IF EXISTS ONLY inventory.purchase_orders DROP CONSTRAINT IF EXISTS purchase_orders_pkey;
+ALTER TABLE IF EXISTS ONLY inventory.purchase_order_items DROP CONSTRAINT IF EXISTS purchase_order_items_purchase_order_id_product_id_key;
+ALTER TABLE IF EXISTS ONLY inventory.purchase_order_items DROP CONSTRAINT IF EXISTS purchase_order_items_pkey;
+ALTER TABLE IF EXISTS ONLY inventory.products DROP CONSTRAINT IF EXISTS products_sku_key;
+ALTER TABLE IF EXISTS ONLY inventory.products DROP CONSTRAINT IF EXISTS products_pkey;
+ALTER TABLE IF EXISTS ONLY inventory.products DROP CONSTRAINT IF EXISTS products_barcode_key;
+ALTER TABLE IF EXISTS ONLY inventory.categories DROP CONSTRAINT IF EXISTS categories_pkey;
+ALTER TABLE IF EXISTS ONLY inventory.categories DROP CONSTRAINT IF EXISTS categories_name_key;
+ALTER TABLE IF EXISTS ONLY eis.users DROP CONSTRAINT IF EXISTS users_username_key;
+ALTER TABLE IF EXISTS ONLY eis.users DROP CONSTRAINT IF EXISTS users_pkey;
+ALTER TABLE IF EXISTS ONLY eis.users DROP CONSTRAINT IF EXISTS users_employee_id_key;
+ALTER TABLE IF EXISTS ONLY eis.positions DROP CONSTRAINT IF EXISTS positions_pkey;
+ALTER TABLE IF EXISTS ONLY eis.positions DROP CONSTRAINT IF EXISTS positions_department_id_title_key;
+ALTER TABLE IF EXISTS ONLY eis.payroll DROP CONSTRAINT IF EXISTS payroll_pkey;
+ALTER TABLE IF EXISTS ONLY eis.payroll DROP CONSTRAINT IF EXISTS payroll_employee_id_period_start_period_end_key;
+ALTER TABLE IF EXISTS ONLY eis.leave_types DROP CONSTRAINT IF EXISTS leave_types_pkey;
+ALTER TABLE IF EXISTS ONLY eis.leave_types DROP CONSTRAINT IF EXISTS leave_types_name_key;
+ALTER TABLE IF EXISTS ONLY eis.leave_requests DROP CONSTRAINT IF EXISTS leave_requests_pkey;
+ALTER TABLE IF EXISTS ONLY eis.employees DROP CONSTRAINT IF EXISTS employees_pkey;
+ALTER TABLE IF EXISTS ONLY eis.employees DROP CONSTRAINT IF EXISTS employees_employee_no_key;
+ALTER TABLE IF EXISTS ONLY eis.employees DROP CONSTRAINT IF EXISTS employees_email_key;
+ALTER TABLE IF EXISTS ONLY eis.emergency_contacts DROP CONSTRAINT IF EXISTS emergency_contacts_pkey;
+ALTER TABLE IF EXISTS ONLY eis.departments DROP CONSTRAINT IF EXISTS departments_pkey;
+ALTER TABLE IF EXISTS ONLY eis.departments DROP CONSTRAINT IF EXISTS departments_name_key;
+ALTER TABLE IF EXISTS ONLY eis.attendance DROP CONSTRAINT IF EXISTS attendance_pkey;
+ALTER TABLE IF EXISTS ONLY eis.attendance DROP CONSTRAINT IF EXISTS attendance_employee_id_work_date_key;
+ALTER TABLE IF EXISTS ONLY canteen.users DROP CONSTRAINT IF EXISTS users_username_key;
+ALTER TABLE IF EXISTS ONLY canteen.users DROP CONSTRAINT IF EXISTS users_pkey;
+ALTER TABLE IF EXISTS ONLY canteen.users DROP CONSTRAINT IF EXISTS users_employee_id_key;
+ALTER TABLE IF EXISTS ONLY canteen.shifts DROP CONSTRAINT IF EXISTS shifts_pkey;
+ALTER TABLE IF EXISTS ONLY canteen.sales DROP CONSTRAINT IF EXISTS sales_receipt_no_key;
+ALTER TABLE IF EXISTS ONLY canteen.sales DROP CONSTRAINT IF EXISTS sales_pkey;
+ALTER TABLE IF EXISTS ONLY canteen.sale_items DROP CONSTRAINT IF EXISTS sale_items_pkey;
+ALTER TABLE IF EXISTS ONLY canteen.payments DROP CONSTRAINT IF EXISTS payments_sale_id_key;
+ALTER TABLE IF EXISTS ONLY canteen.payments DROP CONSTRAINT IF EXISTS payments_pkey;
+ALTER TABLE IF EXISTS ONLY canteen.menu_items DROP CONSTRAINT IF EXISTS menu_items_product_id_key;
+ALTER TABLE IF EXISTS ONLY canteen.menu_items DROP CONSTRAINT IF EXISTS menu_items_pkey;
+ALTER TABLE IF EXISTS ONLY canteen.menu_categories DROP CONSTRAINT IF EXISTS menu_categories_pkey;
+ALTER TABLE IF EXISTS ONLY canteen.menu_categories DROP CONSTRAINT IF EXISTS menu_categories_name_key;
+DROP TABLE IF EXISTS inventory.users;
+DROP TABLE IF EXISTS inventory.suppliers;
+DROP TABLE IF EXISTS inventory.stock_movements;
+DROP TABLE IF EXISTS inventory.purchase_orders;
+DROP TABLE IF EXISTS inventory.purchase_order_items;
+DROP TABLE IF EXISTS inventory.products;
+DROP TABLE IF EXISTS inventory.categories;
+DROP TABLE IF EXISTS eis.users;
+DROP TABLE IF EXISTS eis.positions;
+DROP TABLE IF EXISTS eis.payroll;
+DROP TABLE IF EXISTS eis.leave_types;
+DROP TABLE IF EXISTS eis.leave_requests;
+DROP TABLE IF EXISTS eis.employees;
+DROP TABLE IF EXISTS eis.emergency_contacts;
+DROP TABLE IF EXISTS eis.departments;
+DROP TABLE IF EXISTS eis.attendance;
+DROP TABLE IF EXISTS canteen.users;
+DROP TABLE IF EXISTS canteen.shifts;
+DROP TABLE IF EXISTS canteen.sales;
+DROP TABLE IF EXISTS canteen.sale_items;
+DROP TABLE IF EXISTS canteen.payments;
+DROP TABLE IF EXISTS canteen.menu_items;
+DROP TABLE IF EXISTS canteen.menu_categories;
+DROP FUNCTION IF EXISTS inventory.canteen_stock_change(p_product_id bigint, p_change integer, p_sale_id bigint, p_reason text);
+DROP SCHEMA IF EXISTS inventory;
+DROP SCHEMA IF EXISTS eis;
+DROP SCHEMA IF EXISTS canteen;
 --
--- Name: canteen; Type: SCHEMA; Schema: -; Owner: -
+-- Name: canteen; Type: SCHEMA; Schema: -; Owner: canteen_user
 --
 
 CREATE SCHEMA canteen;
 
 
+ALTER SCHEMA canteen OWNER TO canteen_user;
+
 --
--- Name: eis; Type: SCHEMA; Schema: -; Owner: -
+-- Name: eis; Type: SCHEMA; Schema: -; Owner: eis_user
 --
 
 CREATE SCHEMA eis;
 
 
+ALTER SCHEMA eis OWNER TO eis_user;
+
 --
--- Name: inventory; Type: SCHEMA; Schema: -; Owner: -
+-- Name: inventory; Type: SCHEMA; Schema: -; Owner: inventory_user
 --
 
 CREATE SCHEMA inventory;
 
 
+ALTER SCHEMA inventory OWNER TO inventory_user;
+
 --
--- Name: canteen_stock_change(bigint, integer, bigint, text); Type: FUNCTION; Schema: inventory; Owner: -
+-- Name: canteen_stock_change(bigint, integer, bigint, text); Type: FUNCTION; Schema: inventory; Owner: inventory_user
 --
 
 CREATE FUNCTION inventory.canteen_stock_change(p_product_id bigint, p_change integer, p_sale_id bigint, p_reason text DEFAULT 'Canteen POS'::text) RETURNS void
@@ -77,12 +191,14 @@ END;
 $$;
 
 
+ALTER FUNCTION inventory.canteen_stock_change(p_product_id bigint, p_change integer, p_sale_id bigint, p_reason text) OWNER TO inventory_user;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: menu_categories; Type: TABLE; Schema: canteen; Owner: -
+-- Name: menu_categories; Type: TABLE; Schema: canteen; Owner: canteen_user
 --
 
 CREATE TABLE canteen.menu_categories (
@@ -94,8 +210,10 @@ CREATE TABLE canteen.menu_categories (
 );
 
 
+ALTER TABLE canteen.menu_categories OWNER TO canteen_user;
+
 --
--- Name: menu_categories_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+-- Name: menu_categories_id_seq; Type: SEQUENCE; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE canteen.menu_categories ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -109,7 +227,7 @@ ALTER TABLE canteen.menu_categories ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 
 
 --
--- Name: menu_items; Type: TABLE; Schema: canteen; Owner: -
+-- Name: menu_items; Type: TABLE; Schema: canteen; Owner: canteen_user
 --
 
 CREATE TABLE canteen.menu_items (
@@ -126,8 +244,10 @@ CREATE TABLE canteen.menu_items (
 );
 
 
+ALTER TABLE canteen.menu_items OWNER TO canteen_user;
+
 --
--- Name: menu_items_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+-- Name: menu_items_id_seq; Type: SEQUENCE; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE canteen.menu_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -141,7 +261,7 @@ ALTER TABLE canteen.menu_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
--- Name: payments; Type: TABLE; Schema: canteen; Owner: -
+-- Name: payments; Type: TABLE; Schema: canteen; Owner: canteen_user
 --
 
 CREATE TABLE canteen.payments (
@@ -160,8 +280,10 @@ CREATE TABLE canteen.payments (
 );
 
 
+ALTER TABLE canteen.payments OWNER TO canteen_user;
+
 --
--- Name: payments_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+-- Name: payments_id_seq; Type: SEQUENCE; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE canteen.payments ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -175,7 +297,7 @@ ALTER TABLE canteen.payments ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: sale_items; Type: TABLE; Schema: canteen; Owner: -
+-- Name: sale_items; Type: TABLE; Schema: canteen; Owner: canteen_user
 --
 
 CREATE TABLE canteen.sale_items (
@@ -193,8 +315,10 @@ CREATE TABLE canteen.sale_items (
 );
 
 
+ALTER TABLE canteen.sale_items OWNER TO canteen_user;
+
 --
--- Name: sale_items_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+-- Name: sale_items_id_seq; Type: SEQUENCE; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE canteen.sale_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -208,7 +332,7 @@ ALTER TABLE canteen.sale_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
--- Name: sales; Type: TABLE; Schema: canteen; Owner: -
+-- Name: sales; Type: TABLE; Schema: canteen; Owner: canteen_user
 --
 
 CREATE TABLE canteen.sales (
@@ -237,8 +361,10 @@ CREATE TABLE canteen.sales (
 );
 
 
+ALTER TABLE canteen.sales OWNER TO canteen_user;
+
 --
--- Name: sales_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+-- Name: sales_id_seq; Type: SEQUENCE; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE canteen.sales ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -252,7 +378,7 @@ ALTER TABLE canteen.sales ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: shifts; Type: TABLE; Schema: canteen; Owner: -
+-- Name: shifts; Type: TABLE; Schema: canteen; Owner: canteen_user
 --
 
 CREATE TABLE canteen.shifts (
@@ -269,8 +395,10 @@ CREATE TABLE canteen.shifts (
 );
 
 
+ALTER TABLE canteen.shifts OWNER TO canteen_user;
+
 --
--- Name: shifts_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+-- Name: shifts_id_seq; Type: SEQUENCE; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE canteen.shifts ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -284,7 +412,7 @@ ALTER TABLE canteen.shifts ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: users; Type: TABLE; Schema: canteen; Owner: -
+-- Name: users; Type: TABLE; Schema: canteen; Owner: canteen_user
 --
 
 CREATE TABLE canteen.users (
@@ -303,8 +431,10 @@ CREATE TABLE canteen.users (
 );
 
 
+ALTER TABLE canteen.users OWNER TO canteen_user;
+
 --
--- Name: users_id_seq; Type: SEQUENCE; Schema: canteen; Owner: -
+-- Name: users_id_seq; Type: SEQUENCE; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE canteen.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -318,7 +448,7 @@ ALTER TABLE canteen.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: attendance; Type: TABLE; Schema: eis; Owner: -
+-- Name: attendance; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.attendance (
@@ -335,8 +465,10 @@ CREATE TABLE eis.attendance (
 );
 
 
+ALTER TABLE eis.attendance OWNER TO eis_user;
+
 --
--- Name: attendance_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: attendance_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.attendance ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -350,7 +482,7 @@ ALTER TABLE eis.attendance ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: departments; Type: TABLE; Schema: eis; Owner: -
+-- Name: departments; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.departments (
@@ -362,8 +494,10 @@ CREATE TABLE eis.departments (
 );
 
 
+ALTER TABLE eis.departments OWNER TO eis_user;
+
 --
--- Name: departments_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: departments_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.departments ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -377,7 +511,7 @@ ALTER TABLE eis.departments ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: emergency_contacts; Type: TABLE; Schema: eis; Owner: -
+-- Name: emergency_contacts; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.emergency_contacts (
@@ -391,8 +525,10 @@ CREATE TABLE eis.emergency_contacts (
 );
 
 
+ALTER TABLE eis.emergency_contacts OWNER TO eis_user;
+
 --
--- Name: emergency_contacts_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: emergency_contacts_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.emergency_contacts ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -406,7 +542,7 @@ ALTER TABLE eis.emergency_contacts ALTER COLUMN id ADD GENERATED ALWAYS AS IDENT
 
 
 --
--- Name: employees; Type: TABLE; Schema: eis; Owner: -
+-- Name: employees; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.employees (
@@ -435,8 +571,10 @@ CREATE TABLE eis.employees (
 );
 
 
+ALTER TABLE eis.employees OWNER TO eis_user;
+
 --
--- Name: employees_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: employees_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.employees ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -450,7 +588,7 @@ ALTER TABLE eis.employees ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: leave_requests; Type: TABLE; Schema: eis; Owner: -
+-- Name: leave_requests; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.leave_requests (
@@ -470,8 +608,10 @@ CREATE TABLE eis.leave_requests (
 );
 
 
+ALTER TABLE eis.leave_requests OWNER TO eis_user;
+
 --
--- Name: leave_requests_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: leave_requests_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.leave_requests ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -485,7 +625,7 @@ ALTER TABLE eis.leave_requests ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
--- Name: leave_types; Type: TABLE; Schema: eis; Owner: -
+-- Name: leave_types; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.leave_types (
@@ -497,8 +637,10 @@ CREATE TABLE eis.leave_types (
 );
 
 
+ALTER TABLE eis.leave_types OWNER TO eis_user;
+
 --
--- Name: leave_types_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: leave_types_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.leave_types ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -512,7 +654,7 @@ ALTER TABLE eis.leave_types ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: payroll; Type: TABLE; Schema: eis; Owner: -
+-- Name: payroll; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.payroll (
@@ -532,8 +674,10 @@ CREATE TABLE eis.payroll (
 );
 
 
+ALTER TABLE eis.payroll OWNER TO eis_user;
+
 --
--- Name: payroll_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: payroll_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.payroll ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -547,7 +691,7 @@ ALTER TABLE eis.payroll ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: positions; Type: TABLE; Schema: eis; Owner: -
+-- Name: positions; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.positions (
@@ -560,8 +704,10 @@ CREATE TABLE eis.positions (
 );
 
 
+ALTER TABLE eis.positions OWNER TO eis_user;
+
 --
--- Name: positions_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: positions_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.positions ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -575,7 +721,7 @@ ALTER TABLE eis.positions ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: users; Type: TABLE; Schema: eis; Owner: -
+-- Name: users; Type: TABLE; Schema: eis; Owner: eis_user
 --
 
 CREATE TABLE eis.users (
@@ -592,8 +738,10 @@ CREATE TABLE eis.users (
 );
 
 
+ALTER TABLE eis.users OWNER TO eis_user;
+
 --
--- Name: users_id_seq; Type: SEQUENCE; Schema: eis; Owner: -
+-- Name: users_id_seq; Type: SEQUENCE; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE eis.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -607,7 +755,7 @@ ALTER TABLE eis.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: categories; Type: TABLE; Schema: inventory; Owner: -
+-- Name: categories; Type: TABLE; Schema: inventory; Owner: inventory_user
 --
 
 CREATE TABLE inventory.categories (
@@ -619,8 +767,10 @@ CREATE TABLE inventory.categories (
 );
 
 
+ALTER TABLE inventory.categories OWNER TO inventory_user;
+
 --
--- Name: categories_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+-- Name: categories_id_seq; Type: SEQUENCE; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE inventory.categories ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -634,7 +784,7 @@ ALTER TABLE inventory.categories ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTIT
 
 
 --
--- Name: products; Type: TABLE; Schema: inventory; Owner: -
+-- Name: products; Type: TABLE; Schema: inventory; Owner: inventory_user
 --
 
 CREATE TABLE inventory.products (
@@ -660,8 +810,10 @@ CREATE TABLE inventory.products (
 );
 
 
+ALTER TABLE inventory.products OWNER TO inventory_user;
+
 --
--- Name: products_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+-- Name: products_id_seq; Type: SEQUENCE; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE inventory.products ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -675,7 +827,7 @@ ALTER TABLE inventory.products ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY 
 
 
 --
--- Name: purchase_order_items; Type: TABLE; Schema: inventory; Owner: -
+-- Name: purchase_order_items; Type: TABLE; Schema: inventory; Owner: inventory_user
 --
 
 CREATE TABLE inventory.purchase_order_items (
@@ -691,8 +843,10 @@ CREATE TABLE inventory.purchase_order_items (
 );
 
 
+ALTER TABLE inventory.purchase_order_items OWNER TO inventory_user;
+
 --
--- Name: purchase_order_items_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+-- Name: purchase_order_items_id_seq; Type: SEQUENCE; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE inventory.purchase_order_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -706,7 +860,7 @@ ALTER TABLE inventory.purchase_order_items ALTER COLUMN id ADD GENERATED ALWAYS 
 
 
 --
--- Name: purchase_orders; Type: TABLE; Schema: inventory; Owner: -
+-- Name: purchase_orders; Type: TABLE; Schema: inventory; Owner: inventory_user
 --
 
 CREATE TABLE inventory.purchase_orders (
@@ -724,8 +878,10 @@ CREATE TABLE inventory.purchase_orders (
 );
 
 
+ALTER TABLE inventory.purchase_orders OWNER TO inventory_user;
+
 --
--- Name: purchase_orders_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+-- Name: purchase_orders_id_seq; Type: SEQUENCE; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE inventory.purchase_orders ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -739,7 +895,7 @@ ALTER TABLE inventory.purchase_orders ALTER COLUMN id ADD GENERATED ALWAYS AS ID
 
 
 --
--- Name: stock_movements; Type: TABLE; Schema: inventory; Owner: -
+-- Name: stock_movements; Type: TABLE; Schema: inventory; Owner: inventory_user
 --
 
 CREATE TABLE inventory.stock_movements (
@@ -757,8 +913,10 @@ CREATE TABLE inventory.stock_movements (
 );
 
 
+ALTER TABLE inventory.stock_movements OWNER TO inventory_user;
+
 --
--- Name: stock_movements_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+-- Name: stock_movements_id_seq; Type: SEQUENCE; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE inventory.stock_movements ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -772,7 +930,7 @@ ALTER TABLE inventory.stock_movements ALTER COLUMN id ADD GENERATED ALWAYS AS ID
 
 
 --
--- Name: suppliers; Type: TABLE; Schema: inventory; Owner: -
+-- Name: suppliers; Type: TABLE; Schema: inventory; Owner: inventory_user
 --
 
 CREATE TABLE inventory.suppliers (
@@ -789,8 +947,10 @@ CREATE TABLE inventory.suppliers (
 );
 
 
+ALTER TABLE inventory.suppliers OWNER TO inventory_user;
+
 --
--- Name: suppliers_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+-- Name: suppliers_id_seq; Type: SEQUENCE; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE inventory.suppliers ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -804,7 +964,7 @@ ALTER TABLE inventory.suppliers ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY
 
 
 --
--- Name: users; Type: TABLE; Schema: inventory; Owner: -
+-- Name: users; Type: TABLE; Schema: inventory; Owner: inventory_user
 --
 
 CREATE TABLE inventory.users (
@@ -822,8 +982,10 @@ CREATE TABLE inventory.users (
 );
 
 
+ALTER TABLE inventory.users OWNER TO inventory_user;
+
 --
--- Name: users_id_seq; Type: SEQUENCE; Schema: inventory; Owner: -
+-- Name: users_id_seq; Type: SEQUENCE; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE inventory.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -837,7 +999,7 @@ ALTER TABLE inventory.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Data for Name: menu_categories; Type: TABLE DATA; Schema: canteen; Owner: -
+-- Data for Name: menu_categories; Type: TABLE DATA; Schema: canteen; Owner: canteen_user
 --
 
 COPY canteen.menu_categories (id, name, sort_order, created_at, updated_at) FROM stdin;
@@ -849,7 +1011,7 @@ COPY canteen.menu_categories (id, name, sort_order, created_at, updated_at) FROM
 
 
 --
--- Data for Name: menu_items; Type: TABLE DATA; Schema: canteen; Owner: -
+-- Data for Name: menu_items; Type: TABLE DATA; Schema: canteen; Owner: canteen_user
 --
 
 COPY canteen.menu_items (id, category_id, product_id, name, description, price, is_available, created_at, updated_at) FROM stdin;
@@ -865,7 +1027,7 @@ COPY canteen.menu_items (id, category_id, product_id, name, description, price, 
 
 
 --
--- Data for Name: payments; Type: TABLE DATA; Schema: canteen; Owner: -
+-- Data for Name: payments; Type: TABLE DATA; Schema: canteen; Owner: canteen_user
 --
 
 COPY canteen.payments (id, sale_id, method, amount_tendered, change_given, reference_no, paid_at, created_at, updated_at) FROM stdin;
@@ -874,7 +1036,7 @@ COPY canteen.payments (id, sale_id, method, amount_tendered, change_given, refer
 
 
 --
--- Data for Name: sale_items; Type: TABLE DATA; Schema: canteen; Owner: -
+-- Data for Name: sale_items; Type: TABLE DATA; Schema: canteen; Owner: canteen_user
 --
 
 COPY canteen.sale_items (id, sale_id, menu_item_id, item_name, unit_price, quantity, created_at, updated_at) FROM stdin;
@@ -883,7 +1045,7 @@ COPY canteen.sale_items (id, sale_id, menu_item_id, item_name, unit_price, quant
 
 
 --
--- Data for Name: sales; Type: TABLE DATA; Schema: canteen; Owner: -
+-- Data for Name: sales; Type: TABLE DATA; Schema: canteen; Owner: canteen_user
 --
 
 COPY canteen.sales (id, receipt_no, shift_id, cashier_id, order_type, subtotal, discount, status, notes, sold_at, voided_by, voided_at, void_reason, created_at, updated_at) FROM stdin;
@@ -892,7 +1054,7 @@ COPY canteen.sales (id, receipt_no, shift_id, cashier_id, order_type, subtotal, 
 
 
 --
--- Data for Name: shifts; Type: TABLE DATA; Schema: canteen; Owner: -
+-- Data for Name: shifts; Type: TABLE DATA; Schema: canteen; Owner: canteen_user
 --
 
 COPY canteen.shifts (id, cashier_id, opened_at, closed_at, opening_cash, closing_cash, status, created_at, updated_at) FROM stdin;
@@ -901,16 +1063,17 @@ COPY canteen.shifts (id, cashier_id, opened_at, closed_at, opening_cash, closing
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: canteen; Owner: -
+-- Data for Name: users; Type: TABLE DATA; Schema: canteen; Owner: canteen_user
 --
 
 COPY canteen.users (id, employee_id, name, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
 1	1	Admin Cashier	admin@school.com	$2y$12$1xx454tkWF73K9WsthboJuExuDEQtNiUFiPfRSfKjKAlXMCGEnWL6	admin	t	\N	2026-11-19 11:11:08.790064	2026-11-19 11:11:08.790064
+2	\N	Juan Dela Cruz	juan@gmail.com	$2y$12$.076kFqV.Nl0HxnDxTFDneW8LmzL0zahjyBhT0Cn9.JFhh8MpYsvO	admin	t	\N	2026-11-20 14:10:38	2026-11-20 14:10:38
 \.
 
 
 --
--- Data for Name: attendance; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: attendance; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.attendance (id, employee_id, work_date, time_in, time_out, status, remarks, created_at, updated_at) FROM stdin;
@@ -918,7 +1081,7 @@ COPY eis.attendance (id, employee_id, work_date, time_in, time_out, status, rema
 
 
 --
--- Data for Name: departments; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: departments; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.departments (id, name, description, created_at, updated_at) FROM stdin;
@@ -927,7 +1090,7 @@ COPY eis.departments (id, name, description, created_at, updated_at) FROM stdin;
 
 
 --
--- Data for Name: emergency_contacts; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: emergency_contacts; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.emergency_contacts (id, employee_id, name, relationship, phone, created_at, updated_at) FROM stdin;
@@ -935,7 +1098,7 @@ COPY eis.emergency_contacts (id, employee_id, name, relationship, phone, created
 
 
 --
--- Data for Name: employees; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: employees; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.employees (id, employee_no, first_name, middle_name, last_name, gender, birthdate, civil_status, email, phone, address, department_id, position_id, date_hired, employment_type, status, created_at, updated_at) FROM stdin;
@@ -944,7 +1107,7 @@ COPY eis.employees (id, employee_no, first_name, middle_name, last_name, gender,
 
 
 --
--- Data for Name: leave_requests; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: leave_requests; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.leave_requests (id, employee_id, leave_type_id, start_date, end_date, reason, status, approved_by, decided_at, created_at, updated_at) FROM stdin;
@@ -952,7 +1115,7 @@ COPY eis.leave_requests (id, employee_id, leave_type_id, start_date, end_date, r
 
 
 --
--- Data for Name: leave_types; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: leave_types; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.leave_types (id, name, days_allowed, created_at, updated_at) FROM stdin;
@@ -960,7 +1123,7 @@ COPY eis.leave_types (id, name, days_allowed, created_at, updated_at) FROM stdin
 
 
 --
--- Data for Name: payroll; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: payroll; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.payroll (id, employee_id, period_start, period_end, basic_pay, allowances, deductions, status, created_at, updated_at) FROM stdin;
@@ -968,7 +1131,7 @@ COPY eis.payroll (id, employee_id, period_start, period_end, basic_pay, allowanc
 
 
 --
--- Data for Name: positions; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: positions; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.positions (id, department_id, title, base_salary, created_at, updated_at) FROM stdin;
@@ -977,7 +1140,7 @@ COPY eis.positions (id, department_id, title, base_salary, created_at, updated_a
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: eis; Owner: -
+-- Data for Name: users; Type: TABLE DATA; Schema: eis; Owner: eis_user
 --
 
 COPY eis.users (id, employee_id, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
@@ -985,7 +1148,7 @@ COPY eis.users (id, employee_id, username, password, role, is_active, last_login
 
 
 --
--- Data for Name: categories; Type: TABLE DATA; Schema: inventory; Owner: -
+-- Data for Name: categories; Type: TABLE DATA; Schema: inventory; Owner: inventory_user
 --
 
 COPY inventory.categories (id, name, description, created_at, updated_at) FROM stdin;
@@ -998,39 +1161,42 @@ COPY inventory.categories (id, name, description, created_at, updated_at) FROM s
 
 
 --
--- Data for Name: products; Type: TABLE DATA; Schema: inventory; Owner: -
+-- Data for Name: products; Type: TABLE DATA; Schema: inventory; Owner: inventory_user
 --
 
 COPY inventory.products (id, sku, barcode, name, description, category_id, supplier_id, unit, cost_price, selling_price, quantity_on_hand, reorder_level, status, created_at, updated_at) FROM stdin;
-2	SNK-001	\N	Chips	\N	2	\N	pack	12.00	20.00	30	10	active	2026-11-13 14:05:05.789571	2026-11-13 14:05:05.789571
-4	MEL-001	\N	Chicken Adobo with Rice	\N	4	\N	pc	45.00	55.00	35	10	active	2026-11-19 11:14:04.957862	2026-11-19 11:14:04.957862
-5	MEL-002	\N	Pork Sinigang with Rice	\N	4	\N	pc	60.00	80.00	25	10	active	2026-11-19 11:14:04.962669	2026-11-19 11:14:04.962669
-6	MEL-003	\N	Beef Caldereta with Rice	\N	4	\N	pc	75.00	95.00	20	10	active	2026-11-19 11:14:04.963086	2026-11-19 11:14:04.963086
-7	SNK-002	\N	Cheesy Lumpiang Shanghai (5 pcs)	\N	2	\N	pc	22.00	35.00	40	10	active	2026-11-19 11:14:04.96349	2026-11-19 11:14:04.96349
-8	BEV-002	\N	House Blend Iced Tea (16 oz)	\N	1	\N	pc	10.00	20.00	50	10	active	2026-11-19 11:14:04.963892	2026-11-19 11:14:04.963892
-9	DES-001	\N	Special Halo-Halo	\N	5	\N	pc	35.00	50.00	25	10	active	2026-11-19 11:14:04.964248	2026-11-19 11:14:04.964248
-1	BEV-001	\N	Bottled Water 500ml	\N	1	\N	bottle	10.00	15.00	50	10	active	2026-11-13 14:05:05.789571	2026-11-19 11:19:28
+2	SNK-001	\N	Chips	\N	2	2	pack	12.00	20.00	30	10	active	2026-11-13 14:05:05.789571	2026-11-20 14:05:25
+7	SNK-002	\N	Cheesy Lumpiang Shanghai (5 pcs)	\N	2	3	pc	22.00	35.00	40	10	active	2026-11-19 11:14:04.96349	2026-11-20 14:05:25
+1	BEV-001	\N	Bottled Water 500ml	\N	1	4	bottle	10.00	15.00	50	10	active	2026-11-13 14:05:05.789571	2026-11-20 14:05:25
+8	BEV-002	\N	House Blend Iced Tea (16 oz)	\N	1	4	pc	10.00	20.00	50	10	active	2026-11-19 11:14:04.963892	2026-11-20 14:05:25
+4	MEL-001	\N	Chicken Adobo with Rice	\N	4	1	pc	45.00	55.00	35	10	active	2026-11-19 11:14:04.957862	2026-11-20 14:05:25
+5	MEL-002	\N	Pork Sinigang with Rice	\N	4	1	pc	60.00	80.00	25	10	active	2026-11-19 11:14:04.962669	2026-11-20 14:05:25
+6	MEL-003	\N	Beef Caldereta with Rice	\N	4	1	pc	75.00	95.00	20	10	active	2026-11-19 11:14:04.963086	2026-11-20 14:05:25
+9	DES-001	\N	Special Halo-Halo	\N	5	5	pc	35.00	50.00	25	10	active	2026-11-19 11:14:04.964248	2026-11-20 14:05:25
 \.
 
 
 --
--- Data for Name: purchase_order_items; Type: TABLE DATA; Schema: inventory; Owner: -
+-- Data for Name: purchase_order_items; Type: TABLE DATA; Schema: inventory; Owner: inventory_user
 --
 
 COPY inventory.purchase_order_items (id, purchase_order_id, product_id, quantity, unit_cost, created_at, updated_at) FROM stdin;
+1	1	4	25	45.00	2026-11-20 14:12:22	2026-11-20 14:12:22
+2	1	2	30	12.00	2026-11-20 14:12:22	2026-11-20 14:12:22
 \.
 
 
 --
--- Data for Name: purchase_orders; Type: TABLE DATA; Schema: inventory; Owner: -
+-- Data for Name: purchase_orders; Type: TABLE DATA; Schema: inventory; Owner: inventory_user
 --
 
 COPY inventory.purchase_orders (id, po_number, supplier_id, order_date, expected_date, status, notes, created_by, created_at, updated_at) FROM stdin;
+1	PO-20261120-A101	1	2026-11-20	2026-11-22	pending	Replenishment order for canteen lunch staples and pantry snacks.	1	2026-11-20 14:12:22	2026-11-20 14:12:22
 \.
 
 
 --
--- Data for Name: stock_movements; Type: TABLE DATA; Schema: inventory; Owner: -
+-- Data for Name: stock_movements; Type: TABLE DATA; Schema: inventory; Owner: inventory_user
 --
 
 COPY inventory.stock_movements (id, product_id, movement_type, quantity, reference_type, reference_id, reason, performed_by, created_at) FROM stdin;
@@ -1040,15 +1206,20 @@ COPY inventory.stock_movements (id, product_id, movement_type, quantity, referen
 
 
 --
--- Data for Name: suppliers; Type: TABLE DATA; Schema: inventory; Owner: -
+-- Data for Name: suppliers; Type: TABLE DATA; Schema: inventory; Owner: inventory_user
 --
 
 COPY inventory.suppliers (id, name, contact_person, phone, email, address, status, created_at, updated_at) FROM stdin;
+1	San Miguel Food and Beverage Inc.	Eduardo Mendoza	+63 2 8632 3000	sales@sanmiguel.com.ph	40 San Miguel Ave, Mandaluyong, Metro Manila	active	2026-11-20 14:05:19	2026-11-20 14:05:19
+2	Universal Robina Corporation (URC)	Clarisse Santos	+63 2 8633 7631	orders@urc.com.ph	Tera Tower, Bridgetowne, Pasig City	active	2026-11-20 14:05:19	2026-11-20 14:05:19
+3	Monde Nissin Philippines	Robert Tan	+63 2 7759 7500	distribution@mondenissin.com	Felix Reyes St., Balibago, Santa Rosa, Laguna	active	2026-11-20 14:05:19	2026-11-20 14:05:19
+4	Nestlé Philippines Inc.	Maria Kristina Cruz	+63 2 8898 0001	enterprise@ph.nestle.com	31 Plaza Drive, Rockwell Center, Makati City	active	2026-11-20 14:05:19	2026-11-20 14:05:19
+5	Mega Global Food Wholesaler	Antonio Yap	+63 2 8288 8888	sales@megaglobal.com.ph	Navotas Fish Port Complex, Navotas City	active	2026-11-20 14:05:19	2026-11-20 14:05:19
 \.
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: inventory; Owner: -
+-- Data for Name: users; Type: TABLE DATA; Schema: inventory; Owner: inventory_user
 --
 
 COPY inventory.users (id, employee_id, name, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
@@ -1057,168 +1228,168 @@ COPY inventory.users (id, employee_id, name, username, password, role, is_active
 
 
 --
--- Name: menu_categories_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+-- Name: menu_categories_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: canteen_user
 --
 
 SELECT pg_catalog.setval('canteen.menu_categories_id_seq', 4, true);
 
 
 --
--- Name: menu_items_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+-- Name: menu_items_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: canteen_user
 --
 
 SELECT pg_catalog.setval('canteen.menu_items_id_seq', 8, true);
 
 
 --
--- Name: payments_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+-- Name: payments_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: canteen_user
 --
 
 SELECT pg_catalog.setval('canteen.payments_id_seq', 1, true);
 
 
 --
--- Name: sale_items_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+-- Name: sale_items_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: canteen_user
 --
 
 SELECT pg_catalog.setval('canteen.sale_items_id_seq', 1, true);
 
 
 --
--- Name: sales_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+-- Name: sales_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: canteen_user
 --
 
 SELECT pg_catalog.setval('canteen.sales_id_seq', 1, true);
 
 
 --
--- Name: shifts_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+-- Name: shifts_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: canteen_user
 --
 
 SELECT pg_catalog.setval('canteen.shifts_id_seq', 1, true);
 
 
 --
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: -
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: canteen_user
 --
 
-SELECT pg_catalog.setval('canteen.users_id_seq', 1, true);
+SELECT pg_catalog.setval('canteen.users_id_seq', 2, true);
 
 
 --
--- Name: attendance_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: attendance_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.attendance_id_seq', 1, false);
 
 
 --
--- Name: departments_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: departments_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.departments_id_seq', 1, true);
 
 
 --
--- Name: emergency_contacts_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: emergency_contacts_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.emergency_contacts_id_seq', 1, false);
 
 
 --
--- Name: employees_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: employees_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.employees_id_seq', 1, true);
 
 
 --
--- Name: leave_requests_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: leave_requests_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.leave_requests_id_seq', 1, false);
 
 
 --
--- Name: leave_types_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: leave_types_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.leave_types_id_seq', 1, false);
 
 
 --
--- Name: payroll_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: payroll_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.payroll_id_seq', 1, false);
 
 
 --
--- Name: positions_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: positions_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.positions_id_seq', 1, true);
 
 
 --
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: -
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
 SELECT pg_catalog.setval('eis.users_id_seq', 1, false);
 
 
 --
--- Name: categories_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+-- Name: categories_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: inventory_user
 --
 
 SELECT pg_catalog.setval('inventory.categories_id_seq', 5, true);
 
 
 --
--- Name: products_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+-- Name: products_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: inventory_user
 --
 
 SELECT pg_catalog.setval('inventory.products_id_seq', 9, true);
 
 
 --
--- Name: purchase_order_items_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+-- Name: purchase_order_items_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: inventory_user
 --
 
-SELECT pg_catalog.setval('inventory.purchase_order_items_id_seq', 1, false);
-
-
---
--- Name: purchase_orders_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
---
-
-SELECT pg_catalog.setval('inventory.purchase_orders_id_seq', 1, false);
+SELECT pg_catalog.setval('inventory.purchase_order_items_id_seq', 2, true);
 
 
 --
--- Name: stock_movements_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+-- Name: purchase_orders_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: inventory_user
+--
+
+SELECT pg_catalog.setval('inventory.purchase_orders_id_seq', 1, true);
+
+
+--
+-- Name: stock_movements_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: inventory_user
 --
 
 SELECT pg_catalog.setval('inventory.stock_movements_id_seq', 3, true);
 
 
 --
--- Name: suppliers_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+-- Name: suppliers_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: inventory_user
 --
 
-SELECT pg_catalog.setval('inventory.suppliers_id_seq', 1, false);
+SELECT pg_catalog.setval('inventory.suppliers_id_seq', 5, true);
 
 
 --
--- Name: users_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: -
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: inventory_user
 --
 
 SELECT pg_catalog.setval('inventory.users_id_seq', 1, true);
 
 
 --
--- Name: menu_categories menu_categories_name_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: menu_categories menu_categories_name_key; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.menu_categories
@@ -1226,7 +1397,7 @@ ALTER TABLE ONLY canteen.menu_categories
 
 
 --
--- Name: menu_categories menu_categories_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: menu_categories menu_categories_pkey; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.menu_categories
@@ -1234,7 +1405,7 @@ ALTER TABLE ONLY canteen.menu_categories
 
 
 --
--- Name: menu_items menu_items_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: menu_items menu_items_pkey; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.menu_items
@@ -1242,7 +1413,7 @@ ALTER TABLE ONLY canteen.menu_items
 
 
 --
--- Name: menu_items menu_items_product_id_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: menu_items menu_items_product_id_key; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.menu_items
@@ -1250,7 +1421,7 @@ ALTER TABLE ONLY canteen.menu_items
 
 
 --
--- Name: payments payments_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: payments payments_pkey; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.payments
@@ -1258,7 +1429,7 @@ ALTER TABLE ONLY canteen.payments
 
 
 --
--- Name: payments payments_sale_id_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: payments payments_sale_id_key; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.payments
@@ -1266,7 +1437,7 @@ ALTER TABLE ONLY canteen.payments
 
 
 --
--- Name: sale_items sale_items_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: sale_items sale_items_pkey; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.sale_items
@@ -1274,7 +1445,7 @@ ALTER TABLE ONLY canteen.sale_items
 
 
 --
--- Name: sales sales_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: sales sales_pkey; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.sales
@@ -1282,7 +1453,7 @@ ALTER TABLE ONLY canteen.sales
 
 
 --
--- Name: sales sales_receipt_no_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: sales sales_receipt_no_key; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.sales
@@ -1290,7 +1461,7 @@ ALTER TABLE ONLY canteen.sales
 
 
 --
--- Name: shifts shifts_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: shifts shifts_pkey; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.shifts
@@ -1298,7 +1469,7 @@ ALTER TABLE ONLY canteen.shifts
 
 
 --
--- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.users
@@ -1306,7 +1477,7 @@ ALTER TABLE ONLY canteen.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.users
@@ -1314,7 +1485,7 @@ ALTER TABLE ONLY canteen.users
 
 
 --
--- Name: users users_username_key; Type: CONSTRAINT; Schema: canteen; Owner: -
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.users
@@ -1322,7 +1493,7 @@ ALTER TABLE ONLY canteen.users
 
 
 --
--- Name: attendance attendance_employee_id_work_date_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: attendance attendance_employee_id_work_date_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.attendance
@@ -1330,7 +1501,7 @@ ALTER TABLE ONLY eis.attendance
 
 
 --
--- Name: attendance attendance_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: attendance attendance_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.attendance
@@ -1338,7 +1509,7 @@ ALTER TABLE ONLY eis.attendance
 
 
 --
--- Name: departments departments_name_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: departments departments_name_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.departments
@@ -1346,7 +1517,7 @@ ALTER TABLE ONLY eis.departments
 
 
 --
--- Name: departments departments_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: departments departments_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.departments
@@ -1354,7 +1525,7 @@ ALTER TABLE ONLY eis.departments
 
 
 --
--- Name: emergency_contacts emergency_contacts_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: emergency_contacts emergency_contacts_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.emergency_contacts
@@ -1362,7 +1533,7 @@ ALTER TABLE ONLY eis.emergency_contacts
 
 
 --
--- Name: employees employees_email_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: employees employees_email_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.employees
@@ -1370,7 +1541,7 @@ ALTER TABLE ONLY eis.employees
 
 
 --
--- Name: employees employees_employee_no_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: employees employees_employee_no_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.employees
@@ -1378,7 +1549,7 @@ ALTER TABLE ONLY eis.employees
 
 
 --
--- Name: employees employees_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: employees employees_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.employees
@@ -1386,7 +1557,7 @@ ALTER TABLE ONLY eis.employees
 
 
 --
--- Name: leave_requests leave_requests_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: leave_requests leave_requests_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.leave_requests
@@ -1394,7 +1565,7 @@ ALTER TABLE ONLY eis.leave_requests
 
 
 --
--- Name: leave_types leave_types_name_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: leave_types leave_types_name_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.leave_types
@@ -1402,7 +1573,7 @@ ALTER TABLE ONLY eis.leave_types
 
 
 --
--- Name: leave_types leave_types_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: leave_types leave_types_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.leave_types
@@ -1410,7 +1581,7 @@ ALTER TABLE ONLY eis.leave_types
 
 
 --
--- Name: payroll payroll_employee_id_period_start_period_end_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: payroll payroll_employee_id_period_start_period_end_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.payroll
@@ -1418,7 +1589,7 @@ ALTER TABLE ONLY eis.payroll
 
 
 --
--- Name: payroll payroll_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: payroll payroll_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.payroll
@@ -1426,7 +1597,7 @@ ALTER TABLE ONLY eis.payroll
 
 
 --
--- Name: positions positions_department_id_title_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: positions positions_department_id_title_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.positions
@@ -1434,7 +1605,7 @@ ALTER TABLE ONLY eis.positions
 
 
 --
--- Name: positions positions_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: positions positions_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.positions
@@ -1442,7 +1613,7 @@ ALTER TABLE ONLY eis.positions
 
 
 --
--- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.users
@@ -1450,7 +1621,7 @@ ALTER TABLE ONLY eis.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.users
@@ -1458,7 +1629,7 @@ ALTER TABLE ONLY eis.users
 
 
 --
--- Name: users users_username_key; Type: CONSTRAINT; Schema: eis; Owner: -
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.users
@@ -1466,7 +1637,7 @@ ALTER TABLE ONLY eis.users
 
 
 --
--- Name: categories categories_name_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: categories categories_name_key; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.categories
@@ -1474,7 +1645,7 @@ ALTER TABLE ONLY inventory.categories
 
 
 --
--- Name: categories categories_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: categories categories_pkey; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.categories
@@ -1482,7 +1653,7 @@ ALTER TABLE ONLY inventory.categories
 
 
 --
--- Name: products products_barcode_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: products products_barcode_key; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.products
@@ -1490,7 +1661,7 @@ ALTER TABLE ONLY inventory.products
 
 
 --
--- Name: products products_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: products products_pkey; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.products
@@ -1498,7 +1669,7 @@ ALTER TABLE ONLY inventory.products
 
 
 --
--- Name: products products_sku_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: products products_sku_key; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.products
@@ -1506,7 +1677,7 @@ ALTER TABLE ONLY inventory.products
 
 
 --
--- Name: purchase_order_items purchase_order_items_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: purchase_order_items purchase_order_items_pkey; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.purchase_order_items
@@ -1514,7 +1685,7 @@ ALTER TABLE ONLY inventory.purchase_order_items
 
 
 --
--- Name: purchase_order_items purchase_order_items_purchase_order_id_product_id_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: purchase_order_items purchase_order_items_purchase_order_id_product_id_key; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.purchase_order_items
@@ -1522,7 +1693,7 @@ ALTER TABLE ONLY inventory.purchase_order_items
 
 
 --
--- Name: purchase_orders purchase_orders_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: purchase_orders purchase_orders_pkey; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.purchase_orders
@@ -1530,7 +1701,7 @@ ALTER TABLE ONLY inventory.purchase_orders
 
 
 --
--- Name: purchase_orders purchase_orders_po_number_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: purchase_orders purchase_orders_po_number_key; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.purchase_orders
@@ -1538,7 +1709,7 @@ ALTER TABLE ONLY inventory.purchase_orders
 
 
 --
--- Name: stock_movements stock_movements_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: stock_movements stock_movements_pkey; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.stock_movements
@@ -1546,7 +1717,7 @@ ALTER TABLE ONLY inventory.stock_movements
 
 
 --
--- Name: suppliers suppliers_name_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: suppliers suppliers_name_key; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.suppliers
@@ -1554,7 +1725,7 @@ ALTER TABLE ONLY inventory.suppliers
 
 
 --
--- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.suppliers
@@ -1562,7 +1733,7 @@ ALTER TABLE ONLY inventory.suppliers
 
 
 --
--- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: users users_employee_id_key; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.users
@@ -1570,7 +1741,7 @@ ALTER TABLE ONLY inventory.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.users
@@ -1578,7 +1749,7 @@ ALTER TABLE ONLY inventory.users
 
 
 --
--- Name: users users_username_key; Type: CONSTRAINT; Schema: inventory; Owner: -
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.users
@@ -1586,49 +1757,49 @@ ALTER TABLE ONLY inventory.users
 
 
 --
--- Name: idx_sale_items_sale; Type: INDEX; Schema: canteen; Owner: -
+-- Name: idx_sale_items_sale; Type: INDEX; Schema: canteen; Owner: canteen_user
 --
 
 CREATE INDEX idx_sale_items_sale ON canteen.sale_items USING btree (sale_id);
 
 
 --
--- Name: idx_sales_cashier; Type: INDEX; Schema: canteen; Owner: -
+-- Name: idx_sales_cashier; Type: INDEX; Schema: canteen; Owner: canteen_user
 --
 
 CREATE INDEX idx_sales_cashier ON canteen.sales USING btree (cashier_id);
 
 
 --
--- Name: idx_sales_sold_at; Type: INDEX; Schema: canteen; Owner: -
+-- Name: idx_sales_sold_at; Type: INDEX; Schema: canteen; Owner: canteen_user
 --
 
 CREATE INDEX idx_sales_sold_at ON canteen.sales USING btree (sold_at);
 
 
 --
--- Name: one_open_shift_per_cashier; Type: INDEX; Schema: canteen; Owner: -
+-- Name: one_open_shift_per_cashier; Type: INDEX; Schema: canteen; Owner: canteen_user
 --
 
 CREATE UNIQUE INDEX one_open_shift_per_cashier ON canteen.shifts USING btree (cashier_id) WHERE ((status)::text = 'open'::text);
 
 
 --
--- Name: idx_movements_product; Type: INDEX; Schema: inventory; Owner: -
+-- Name: idx_movements_product; Type: INDEX; Schema: inventory; Owner: inventory_user
 --
 
 CREATE INDEX idx_movements_product ON inventory.stock_movements USING btree (product_id, created_at);
 
 
 --
--- Name: idx_products_category; Type: INDEX; Schema: inventory; Owner: -
+-- Name: idx_products_category; Type: INDEX; Schema: inventory; Owner: inventory_user
 --
 
 CREATE INDEX idx_products_category ON inventory.products USING btree (category_id);
 
 
 --
--- Name: menu_items menu_items_category_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: menu_items menu_items_category_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.menu_items
@@ -1636,7 +1807,7 @@ ALTER TABLE ONLY canteen.menu_items
 
 
 --
--- Name: menu_items menu_items_product_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: menu_items menu_items_product_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.menu_items
@@ -1644,7 +1815,7 @@ ALTER TABLE ONLY canteen.menu_items
 
 
 --
--- Name: payments payments_sale_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: payments payments_sale_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.payments
@@ -1652,7 +1823,7 @@ ALTER TABLE ONLY canteen.payments
 
 
 --
--- Name: sale_items sale_items_menu_item_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: sale_items sale_items_menu_item_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.sale_items
@@ -1660,7 +1831,7 @@ ALTER TABLE ONLY canteen.sale_items
 
 
 --
--- Name: sale_items sale_items_sale_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: sale_items sale_items_sale_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.sale_items
@@ -1668,7 +1839,7 @@ ALTER TABLE ONLY canteen.sale_items
 
 
 --
--- Name: sales sales_cashier_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: sales sales_cashier_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.sales
@@ -1676,7 +1847,7 @@ ALTER TABLE ONLY canteen.sales
 
 
 --
--- Name: sales sales_shift_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: sales sales_shift_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.sales
@@ -1684,7 +1855,7 @@ ALTER TABLE ONLY canteen.sales
 
 
 --
--- Name: sales sales_voided_by_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: sales sales_voided_by_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.sales
@@ -1692,7 +1863,7 @@ ALTER TABLE ONLY canteen.sales
 
 
 --
--- Name: shifts shifts_cashier_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: shifts shifts_cashier_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.shifts
@@ -1700,7 +1871,7 @@ ALTER TABLE ONLY canteen.shifts
 
 
 --
--- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: -
+-- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: canteen; Owner: canteen_user
 --
 
 ALTER TABLE ONLY canteen.users
@@ -1708,7 +1879,7 @@ ALTER TABLE ONLY canteen.users
 
 
 --
--- Name: attendance attendance_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: attendance attendance_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.attendance
@@ -1716,7 +1887,7 @@ ALTER TABLE ONLY eis.attendance
 
 
 --
--- Name: emergency_contacts emergency_contacts_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: emergency_contacts emergency_contacts_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.emergency_contacts
@@ -1724,7 +1895,7 @@ ALTER TABLE ONLY eis.emergency_contacts
 
 
 --
--- Name: employees employees_department_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: employees employees_department_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.employees
@@ -1732,7 +1903,7 @@ ALTER TABLE ONLY eis.employees
 
 
 --
--- Name: employees employees_position_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: employees employees_position_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.employees
@@ -1740,7 +1911,7 @@ ALTER TABLE ONLY eis.employees
 
 
 --
--- Name: leave_requests leave_requests_approved_by_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: leave_requests leave_requests_approved_by_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.leave_requests
@@ -1748,7 +1919,7 @@ ALTER TABLE ONLY eis.leave_requests
 
 
 --
--- Name: leave_requests leave_requests_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: leave_requests leave_requests_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.leave_requests
@@ -1756,7 +1927,7 @@ ALTER TABLE ONLY eis.leave_requests
 
 
 --
--- Name: leave_requests leave_requests_leave_type_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: leave_requests leave_requests_leave_type_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.leave_requests
@@ -1764,7 +1935,7 @@ ALTER TABLE ONLY eis.leave_requests
 
 
 --
--- Name: payroll payroll_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: payroll payroll_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.payroll
@@ -1772,7 +1943,7 @@ ALTER TABLE ONLY eis.payroll
 
 
 --
--- Name: positions positions_department_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: positions positions_department_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.positions
@@ -1780,7 +1951,7 @@ ALTER TABLE ONLY eis.positions
 
 
 --
--- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: -
+-- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: eis; Owner: eis_user
 --
 
 ALTER TABLE ONLY eis.users
@@ -1788,7 +1959,7 @@ ALTER TABLE ONLY eis.users
 
 
 --
--- Name: products products_category_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: products products_category_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.products
@@ -1796,7 +1967,7 @@ ALTER TABLE ONLY inventory.products
 
 
 --
--- Name: products products_supplier_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: products products_supplier_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.products
@@ -1804,7 +1975,7 @@ ALTER TABLE ONLY inventory.products
 
 
 --
--- Name: purchase_order_items purchase_order_items_product_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: purchase_order_items purchase_order_items_product_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.purchase_order_items
@@ -1812,7 +1983,7 @@ ALTER TABLE ONLY inventory.purchase_order_items
 
 
 --
--- Name: purchase_order_items purchase_order_items_purchase_order_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: purchase_order_items purchase_order_items_purchase_order_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.purchase_order_items
@@ -1820,7 +1991,7 @@ ALTER TABLE ONLY inventory.purchase_order_items
 
 
 --
--- Name: purchase_orders purchase_orders_created_by_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: purchase_orders purchase_orders_created_by_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.purchase_orders
@@ -1828,7 +1999,7 @@ ALTER TABLE ONLY inventory.purchase_orders
 
 
 --
--- Name: purchase_orders purchase_orders_supplier_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: purchase_orders purchase_orders_supplier_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.purchase_orders
@@ -1836,7 +2007,7 @@ ALTER TABLE ONLY inventory.purchase_orders
 
 
 --
--- Name: stock_movements stock_movements_performed_by_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: stock_movements stock_movements_performed_by_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.stock_movements
@@ -1844,7 +2015,7 @@ ALTER TABLE ONLY inventory.stock_movements
 
 
 --
--- Name: stock_movements stock_movements_product_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: stock_movements stock_movements_product_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.stock_movements
@@ -1852,7 +2023,7 @@ ALTER TABLE ONLY inventory.stock_movements
 
 
 --
--- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: -
+-- Name: users users_employee_id_fkey; Type: FK CONSTRAINT; Schema: inventory; Owner: inventory_user
 --
 
 ALTER TABLE ONLY inventory.users
@@ -1860,8 +2031,167 @@ ALTER TABLE ONLY inventory.users
 
 
 --
+-- Name: SCHEMA eis; Type: ACL; Schema: -; Owner: eis_user
+--
+
+GRANT USAGE ON SCHEMA eis TO canteen_user;
+GRANT USAGE ON SCHEMA eis TO inventory_user;
+
+
+--
+-- Name: SCHEMA inventory; Type: ACL; Schema: -; Owner: inventory_user
+--
+
+GRANT USAGE ON SCHEMA inventory TO canteen_user;
+
+
+--
+-- Name: FUNCTION canteen_stock_change(p_product_id bigint, p_change integer, p_sale_id bigint, p_reason text); Type: ACL; Schema: inventory; Owner: inventory_user
+--
+
+REVOKE ALL ON FUNCTION inventory.canteen_stock_change(p_product_id bigint, p_change integer, p_sale_id bigint, p_reason text) FROM PUBLIC;
+GRANT ALL ON FUNCTION inventory.canteen_stock_change(p_product_id bigint, p_change integer, p_sale_id bigint, p_reason text) TO canteen_user;
+
+
+--
+-- Name: TABLE attendance; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.attendance TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.attendance TO inventory_user;
+
+
+--
+-- Name: TABLE departments; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.departments TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.departments TO inventory_user;
+
+
+--
+-- Name: TABLE emergency_contacts; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.emergency_contacts TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.emergency_contacts TO inventory_user;
+
+
+--
+-- Name: TABLE employees; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.employees TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.employees TO inventory_user;
+
+
+--
+-- Name: TABLE leave_requests; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.leave_requests TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.leave_requests TO inventory_user;
+
+
+--
+-- Name: TABLE leave_types; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.leave_types TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.leave_types TO inventory_user;
+
+
+--
+-- Name: TABLE payroll; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.payroll TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.payroll TO inventory_user;
+
+
+--
+-- Name: TABLE positions; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.positions TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.positions TO inventory_user;
+
+
+--
+-- Name: TABLE users; Type: ACL; Schema: eis; Owner: eis_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE eis.users TO canteen_user;
+GRANT SELECT,REFERENCES ON TABLE eis.users TO inventory_user;
+
+
+--
+-- Name: TABLE categories; Type: ACL; Schema: inventory; Owner: inventory_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE inventory.categories TO canteen_user;
+
+
+--
+-- Name: TABLE products; Type: ACL; Schema: inventory; Owner: inventory_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE inventory.products TO canteen_user;
+
+
+--
+-- Name: TABLE purchase_order_items; Type: ACL; Schema: inventory; Owner: inventory_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE inventory.purchase_order_items TO canteen_user;
+
+
+--
+-- Name: TABLE purchase_orders; Type: ACL; Schema: inventory; Owner: inventory_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE inventory.purchase_orders TO canteen_user;
+
+
+--
+-- Name: TABLE stock_movements; Type: ACL; Schema: inventory; Owner: inventory_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE inventory.stock_movements TO canteen_user;
+
+
+--
+-- Name: TABLE suppliers; Type: ACL; Schema: inventory; Owner: inventory_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE inventory.suppliers TO canteen_user;
+
+
+--
+-- Name: TABLE users; Type: ACL; Schema: inventory; Owner: inventory_user
+--
+
+GRANT SELECT,REFERENCES ON TABLE inventory.users TO canteen_user;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: eis; Owner: eis_user
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE eis_user IN SCHEMA eis GRANT SELECT,REFERENCES ON TABLES TO inventory_user;
+ALTER DEFAULT PRIVILEGES FOR ROLE eis_user IN SCHEMA eis GRANT SELECT,REFERENCES ON TABLES TO canteen_user;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: inventory; Owner: inventory_user
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE inventory_user IN SCHEMA inventory GRANT SELECT,REFERENCES ON TABLES TO canteen_user;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 5XSYpxtS2vaFTLidbw62hxEh7TKIDxck7ggtgGpKpq3YkQhUzhkjO0jc8PmD9wa
+\unrestrict qauPFOcGZBM3Fi9KwuR573VX6v0JfZLT8VvwuMqNxlcEJFbaX1NwM9oM2ZYPYUC
 

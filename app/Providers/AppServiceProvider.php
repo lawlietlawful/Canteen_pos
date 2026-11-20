@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\Product;
+use App\Models\InventoryProduct;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -26,7 +26,9 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.app', function ($view) {
             if (Auth::check()) {
                 try {
-                    $lowStockCount = Product::where('stock_qty', '<=', 10)->count();
+                    $lowStockCount = InventoryProduct::where('status', 'active')
+                        ->whereColumn('quantity_on_hand', '<=', 'reorder_level')
+                        ->count();
                     $view->with('navLowStockCount', $lowStockCount);
                 } catch (\Throwable $e) {
                     $view->with('navLowStockCount', 0);
