@@ -87,45 +87,14 @@
                     <div style="width: 1px; height: 22px; background: rgba(255,255,255,0.15);"></div>
                 </li>
 
-                <!-- Centralized Inventory Hub Dropdown -->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center gap-1 {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="#" id="inventoryDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 600;">
-                        <i class="bi bi-box-seam me-1 text-info"></i> Inventory Hub
+                <!-- Separate Inventory System Bridge Link -->
+                <li class="nav-item d-flex align-items-center ms-lg-2">
+                    <a href="http://127.0.0.1:8001" target="_blank" class="btn btn-outline-info btn-sm py-1 px-2.5 d-flex align-items-center gap-1.5" style="font-size: 0.78rem; border-color: rgba(56, 189, 248, 0.4);" title="Open Group 2's Standalone Inventory System">
+                        <i class="bi bi-box-seam text-info"></i> Open Inventory System (Port 8001) &rarr;
                         @if (!empty($navLowStockCount) && $navLowStockCount > 0)
-                            <span class="badge rounded-pill bg-danger ms-1 px-1.5 py-0.5" style="font-size: 0.65rem;" title="{{ $navLowStockCount }} low-stock items">{{ $navLowStockCount }}</span>
+                            <span class="badge rounded-pill bg-danger ms-1 px-1.5 py-0.5" style="font-size: 0.65rem;" title="{{ $navLowStockCount }} low-stock items in warehouse">{{ $navLowStockCount }} Low</span>
                         @endif
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-dark shadow-lg border-0 mt-2" aria-labelledby="inventoryDropdown" style="background: #0f172a; border-radius: 10px; font-size: 0.88rem; min-width: 220px;">
-                        <li>
-                            <a class="dropdown-item py-2 {{ request()->routeIs('inventory.dashboard') ? 'active bg-primary' : '' }}" href="{{ route('inventory.dashboard') }}">
-                                <i class="bi bi-grid-1x2 text-info me-2"></i> Inventory Overview
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center {{ request()->routeIs('inventory.products.*') ? 'active bg-primary' : '' }}" href="{{ route('inventory.products.index') }}">
-                                <span><i class="bi bi-boxes text-info me-2"></i> Warehouse Stock</span>
-                                @if (!empty($navLowStockCount) && $navLowStockCount > 0)
-                                    <span class="badge rounded-pill bg-danger" style="font-size: 0.65rem;">{{ $navLowStockCount }} Low</span>
-                                @endif
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item py-2 {{ request()->routeIs('inventory.movements.*') ? 'active bg-primary' : '' }}" href="{{ route('inventory.movements.index') }}">
-                                <i class="bi bi-arrow-left-right text-info me-2"></i> Stock Movements
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider my-1 opacity-25"></li>
-                        <li>
-                            <a class="dropdown-item py-2 {{ request()->routeIs('inventory.purchase-orders.*') ? 'active bg-primary' : '' }}" href="{{ route('inventory.purchase-orders.index') }}">
-                                <i class="bi bi-file-earmark-check text-info me-2"></i> Purchase Orders
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item py-2 {{ request()->routeIs('inventory.suppliers.*') ? 'active bg-primary' : '' }}" href="{{ route('inventory.suppliers.index') }}">
-                                <i class="bi bi-truck text-info me-2"></i> Suppliers Directory
-                            </a>
-                        </li>
-                    </ul>
                 </li>
             </ul>
 
