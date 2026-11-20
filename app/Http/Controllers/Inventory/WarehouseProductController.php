@@ -94,6 +94,10 @@ class WarehouseProductController extends Controller
 
             // If initial stock > 0, log an initial stock movement
             if ($validated['quantity_on_hand'] > 0) {
+                $performedBy = (auth()->check() && auth()->user() instanceof \App\Models\InventoryUser)
+                    ? auth()->id()
+                    : (\App\Models\InventoryUser::where('username', '!=', 'canteen_system')->value('id') ?? 1);
+
                 StockMovement::create([
                     'product_id'     => $product->id,
                     'movement_type'  => 'in',
@@ -101,7 +105,7 @@ class WarehouseProductController extends Controller
                     'reference_type' => 'manual',
                     'reference_id'   => null,
                     'reason'         => 'Initial inventory stock intake upon SKU registration',
-                    'performed_by'   => 1, // System inventory staff ID
+                    'performed_by'   => $performedBy,
                     'created_at'     => now(),
                 ]);
             }

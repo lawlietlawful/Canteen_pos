@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Auth\UnifiedUserProvider;
 use App\Models\InventoryProduct;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
@@ -22,6 +23,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register Unified User Provider (supporting both canteen.users and inventory.users)
+        Auth::provider('unified', function ($app, array $config) {
+            return new UnifiedUserProvider();
+        });
+
         // Share low stock count with the master navigation bar
         View::composer('layouts.app', function ($view) {
             if (Auth::check()) {

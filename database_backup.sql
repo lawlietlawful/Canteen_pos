@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict qauPFOcGZBM3Fi9KwuR573VX6v0JfZLT8VvwuMqNxlcEJFbaX1NwM9oM2ZYPYUC
+\restrict GHbjGd4N9at0hq0gSMI2sUUmToV6TeY88hf25Fo3uy8b5HclPDdlF7QA101e6o3
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -1069,6 +1069,11 @@ COPY canteen.shifts (id, cashier_id, opened_at, closed_at, opening_cash, closing
 COPY canteen.users (id, employee_id, name, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
 1	1	Admin Cashier	admin@school.com	$2y$12$1xx454tkWF73K9WsthboJuExuDEQtNiUFiPfRSfKjKAlXMCGEnWL6	admin	t	\N	2026-11-19 11:11:08.790064	2026-11-19 11:11:08.790064
 2	\N	Juan Dela Cruz	juan@gmail.com	$2y$12$.076kFqV.Nl0HxnDxTFDneW8LmzL0zahjyBhT0Cn9.JFhh8MpYsvO	admin	t	\N	2026-11-20 14:10:38	2026-11-20 14:10:38
+3	12	Lorejo, Lian Zyrelle E.	llorejo	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	admin	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+4	13	Pescante, Christal Pearl F.	cpescante	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	cashier	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+5	14	Ramos, Carlos Jaime Roa	cramos	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	cashier	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+6	15	Mauhay, Jhon Jefferson A.	jmauhay	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	cashier	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+7	16	Manon-og, Maiah Reva B.	mmanonog	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	cashier	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
 \.
 
 
@@ -1086,6 +1091,8 @@ COPY eis.attendance (id, employee_id, work_date, time_in, time_out, status, rema
 
 COPY eis.departments (id, name, description, created_at, updated_at) FROM stdin;
 1	Canteen Services	School Canteen & Food Operations	2026-11-19 11:12:46.804818	2026-11-19 11:12:46.804818
+2	Warehouse & Inventory Management	Centralized Inventory, Stock Control and Procurement	2026-11-20 14:23:08	2026-11-20 14:23:08
+3	Human Resources & EIS	Employee Information and Personnel Management	2026-11-20 14:23:08	2026-11-20 14:23:08
 \.
 
 
@@ -1103,6 +1110,21 @@ COPY eis.emergency_contacts (id, employee_id, name, relationship, phone, created
 
 COPY eis.employees (id, employee_no, first_name, middle_name, last_name, gender, birthdate, civil_status, email, phone, address, department_id, position_id, date_hired, employment_type, status, created_at, updated_at) FROM stdin;
 1	EMP-2026-001	Admin	\N	Cashier	Male	\N	Single	\N	\N	\N	1	1	2026-11-19	Regular	active	2026-11-19 11:13:10.529416	2026-11-19 11:13:10.529416
+2	EMP-2026-002	Edeva Joy	O.	Dybongco	Female	\N	Single	\N	\N	\N	3	6	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+3	EMP-2026-003	Katrayne Princess	B.	Miranda	Female	\N	Single	\N	\N	\N	3	7	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+4	EMP-2026-004	Almerande Jr.	P.	Pampilo	Male	\N	Single	\N	\N	\N	3	7	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+5	EMP-2026-005	Sheila Marie	\N	Taladua	Female	\N	Single	\N	\N	\N	3	7	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+6	EMP-2026-006	Denjzel	S.	Caguindangan	Male	\N	Single	\N	\N	\N	3	7	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+7	EMP-2026-007	Marchelyn	S.	Manlaran	Female	\N	Single	\N	\N	\N	2	3	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+8	EMP-2026-008	Sherylle	\N	Saramosing	Female	\N	Single	\N	\N	\N	2	4	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+9	EMP-2026-009	Gogen	P.	Antipuesto	Male	\N	Single	\N	\N	\N	2	4	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+10	EMP-2026-010	Jolly Hope	T.	Dancila	Female	\N	Single	\N	\N	\N	2	5	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+11	EMP-2026-011	Alexander Josh	A.	David	Male	\N	Single	\N	\N	\N	2	4	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+12	EMP-2026-012	Lian Zyrelle	E.	Lorejo	Female	\N	Single	\N	\N	\N	1	1	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+13	EMP-2026-013	Christal Pearl	F.	Pescante	Female	\N	Single	\N	\N	\N	1	2	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+14	EMP-2026-014	Carlos Jaime	Roa	Ramos	Male	\N	Single	\N	\N	\N	1	2	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+15	EMP-2026-015	Jhon Jefferson	A.	Mauhay	Male	\N	Single	\N	\N	\N	1	2	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
+16	EMP-2026-016	Maiah Reva	B.	Manon-og	Female	\N	Single	\N	\N	\N	1	2	2026-11-20	Regular	active	2026-11-20 14:23:08	2026-11-20 14:23:08
 \.
 
 
@@ -1136,6 +1158,12 @@ COPY eis.payroll (id, employee_id, period_start, period_end, basic_pay, allowanc
 
 COPY eis.positions (id, department_id, title, base_salary, created_at, updated_at) FROM stdin;
 1	1	Head Cashier	25000.00	2026-11-19 11:12:46.80779	2026-11-19 11:12:46.80779
+2	1	Canteen Cashier	18000.00	2026-11-20 14:23:08	2026-11-20 14:23:08
+3	2	Inventory Manager	28000.00	2026-11-20 14:23:08	2026-11-20 14:23:08
+4	2	Warehouse Custodian	20000.00	2026-11-20 14:23:08	2026-11-20 14:23:08
+5	2	Procurement Officer	22000.00	2026-11-20 14:23:08	2026-11-20 14:23:08
+6	3	HR Administrator	28000.00	2026-11-20 14:23:08	2026-11-20 14:23:08
+7	3	HR Specialist	20000.00	2026-11-20 14:23:08	2026-11-20 14:23:08
 \.
 
 
@@ -1144,6 +1172,11 @@ COPY eis.positions (id, department_id, title, base_salary, created_at, updated_a
 --
 
 COPY eis.users (id, employee_id, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
+1	2	edybongco	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	admin	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+2	3	kmiranda	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	hr	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+3	4	apampilo	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	employee	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+4	5	staladua	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	employee	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+5	6	dcaguindangan	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	employee	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
 \.
 
 
@@ -1224,6 +1257,11 @@ COPY inventory.suppliers (id, name, contact_person, phone, email, address, statu
 
 COPY inventory.users (id, employee_id, name, username, password, role, is_active, last_login_at, created_at, updated_at) FROM stdin;
 1	\N	Canteen POS (system)	canteen_system	!	staff	f	\N	2026-11-13 14:08:05.040965	2026-11-13 14:08:05.040965
+2	7	Manlaran, Marchelyn S.	mmanlaran	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	admin	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+3	8	Saramosing, Sherylle	ssaramosing	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	staff	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+4	9	Antipuesto, Gogen P.	gantipuesto	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	staff	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+5	10	Dancila, Jolly Hope T.	jdancila	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	staff	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
+6	11	David, Alexander Josh A.	adavid	$2y$12$8T6M4D1lW8M/k8jFqWTvqOjBvAJPpwWQInqyIF2B7mrdKsbBKMzia	staff	t	\N	2026-11-20 14:23:08	2026-11-20 14:23:08
 \.
 
 
@@ -1273,7 +1311,7 @@ SELECT pg_catalog.setval('canteen.shifts_id_seq', 1, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: canteen; Owner: canteen_user
 --
 
-SELECT pg_catalog.setval('canteen.users_id_seq', 2, true);
+SELECT pg_catalog.setval('canteen.users_id_seq', 7, true);
 
 
 --
@@ -1287,7 +1325,7 @@ SELECT pg_catalog.setval('eis.attendance_id_seq', 1, false);
 -- Name: departments_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
-SELECT pg_catalog.setval('eis.departments_id_seq', 1, true);
+SELECT pg_catalog.setval('eis.departments_id_seq', 3, true);
 
 
 --
@@ -1301,7 +1339,7 @@ SELECT pg_catalog.setval('eis.emergency_contacts_id_seq', 1, false);
 -- Name: employees_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
-SELECT pg_catalog.setval('eis.employees_id_seq', 1, true);
+SELECT pg_catalog.setval('eis.employees_id_seq', 16, true);
 
 
 --
@@ -1329,14 +1367,14 @@ SELECT pg_catalog.setval('eis.payroll_id_seq', 1, false);
 -- Name: positions_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
-SELECT pg_catalog.setval('eis.positions_id_seq', 1, true);
+SELECT pg_catalog.setval('eis.positions_id_seq', 7, true);
 
 
 --
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: eis; Owner: eis_user
 --
 
-SELECT pg_catalog.setval('eis.users_id_seq', 1, false);
+SELECT pg_catalog.setval('eis.users_id_seq', 5, true);
 
 
 --
@@ -1385,7 +1423,7 @@ SELECT pg_catalog.setval('inventory.suppliers_id_seq', 5, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: inventory; Owner: inventory_user
 --
 
-SELECT pg_catalog.setval('inventory.users_id_seq', 1, true);
+SELECT pg_catalog.setval('inventory.users_id_seq', 6, true);
 
 
 --
@@ -2193,5 +2231,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE inventory_user IN SCHEMA inventory GRANT SELEC
 -- PostgreSQL database dump complete
 --
 
-\unrestrict qauPFOcGZBM3Fi9KwuR573VX6v0JfZLT8VvwuMqNxlcEJFbaX1NwM9oM2ZYPYUC
+\unrestrict GHbjGd4N9at0hq0gSMI2sUUmToV6TeY88hf25Fo3uy8b5HclPDdlF7QA101e6o3
 

@@ -78,6 +78,10 @@ class PurchaseOrderController extends Controller
                 $poNumber = "PO-{$datePrefix}-" . strtoupper(Str::random(4));
             }
 
+            $createdBy = (auth()->check() && auth()->user() instanceof \App\Models\InventoryUser)
+                ? auth()->id()
+                : (\App\Models\InventoryUser::where('username', '!=', 'canteen_system')->value('id') ?? 1);
+
             $order = PurchaseOrder::create([
                 'po_number'     => $poNumber,
                 'supplier_id'   => $validated['supplier_id'],
@@ -85,7 +89,7 @@ class PurchaseOrderController extends Controller
                 'expected_date' => $validated['expected_date'] ?? null,
                 'status'        => 'pending',
                 'notes'         => $validated['notes'] ?? null,
-                'created_by'    => 1, // Inventory staff ID
+                'created_by'    => $createdBy,
             ]);
 
             // Track inserted product IDs to prevent duplicates in the same PO
@@ -143,6 +147,10 @@ class PurchaseOrderController extends Controller
                         $product->cost_price = (float)$item->unit_cost; // Update latest cost price
                         $product->save();
 
+                        $receivedBy = (auth()->check() && auth()->user() instanceof \App\Models\InventoryUser)
+                            ? auth()->id()
+                            : (\App\Models\InventoryUser::where('username', '!=', 'canteen_system')->value('id') ?? 1);
+
                         StockMovement::create([
                             'product_id'     => $product->id,
                             'movement_type'  => 'in',
@@ -150,7 +158,7 @@ class PurchaseOrderController extends Controller
                             'reference_type' => 'purchase_order',
                             'reference_id'   => $po->id,
                             'reason'         => "Received PO #{$po->po_number}",
-                            'performed_by'   => 1,
+                            'performed_by'   => $receivedBy,
                             'created_at'     => now(),
                         ]);
                     }

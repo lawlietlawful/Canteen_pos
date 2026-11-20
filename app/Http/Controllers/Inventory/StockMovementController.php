@@ -105,6 +105,10 @@ class StockMovementController extends Controller
                 $product->save();
 
                 // Insert into inventory.stock_movements
+                $performedBy = (auth()->check() && auth()->user() instanceof \App\Models\InventoryUser)
+                    ? auth()->id()
+                    : (\App\Models\InventoryUser::where('username', '!=', 'canteen_system')->value('id') ?? 1);
+
                 StockMovement::create([
                     'product_id'     => $productId,
                     'movement_type'  => $movementType,
@@ -112,7 +116,7 @@ class StockMovementController extends Controller
                     'reference_type' => $refType,
                     'reference_id'   => null,
                     'reason'         => $reason,
-                    'performed_by'   => 1, // System staff ID
+                    'performed_by'   => $performedBy,
                     'created_at'     => now(),
                 ]);
             });

@@ -56,7 +56,22 @@ class User extends Authenticatable
      */
     public function getIdnoAttribute(): string
     {
-        return (string)$this->id;
+        return 'CAN-' . str_pad($this->id, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function getSystemAttribute(): string
+    {
+        return 'canteen';
+    }
+
+    public function isInventoryUser(): bool
+    {
+        return false;
+    }
+
+    public function isCanteenUser(): bool
+    {
+        return true;
     }
 
     /**
