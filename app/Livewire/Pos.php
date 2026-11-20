@@ -15,6 +15,8 @@ class Pos extends Component
     public string $selectedCategory = 'all';
     public array $cart = [];
     public string $customerName = '';
+    public string $orderType = 'dine_in'; // 'dine_in' or 'take_out'
+    public string $discountType = 'none'; // 'none', 'student', 'senior'
     public string $paymentMethod = 'cash';
     public string $amountTendered = '';
     public string $errorMessage = '';
@@ -51,6 +53,8 @@ class Pos extends Component
         return view('livewire.pos', [
             'categories'     => $categories,
             'products'       => $products,
+            'subtotal'       => $this->subtotal,
+            'discountAmount' => $this->discountAmount,
             'total'          => $this->total,
             'itemCount'      => $this->itemCount,
             'change'         => $this->change,
@@ -179,6 +183,23 @@ class Pos extends Component
     }
 
     /**
+     * Set Dine-In vs Take-Out
+     */
+    public function setOrderType(string $type): void
+    {
+        $this->orderType = in_array($type, ['dine_in', 'take_out'], true) ? $type : 'dine_in';
+    }
+
+    /**
+     * Set Discount Type (none, student, senior)
+     */
+    public function setDiscountType(string $type): void
+    {
+        $this->discountType = in_array($type, ['none', 'student', 'senior'], true) ? $type : 'none';
+        $this->syncPaymentAmount();
+    }
+
+    /**
      * Clear all items in cart
      */
     public function clearCart(): void
@@ -187,6 +208,8 @@ class Pos extends Component
         $this->amountTendered = '';
         $this->customerName = '';
         $this->errorMessage = '';
+        $this->discountType = 'none';
+        $this->orderType = 'dine_in';
     }
 
     /**
@@ -228,15 +251,34 @@ class Pos extends Component
     }
 
     /**
-     * Total amount computed property
+     * Subtotal computed property
      */
-    public function getTotalProperty(): float
+    public function getSubtotalProperty(): float
     {
         $sum = 0.0;
         foreach ($this->cart as $item) {
             $sum += $item['price'] * $item['qty'];
         }
         return round($sum, 2);
+    }
+
+    /**
+     * Discount Amount computed property (Student/Senior = 20%)
+     */
+    public function getDiscountAmountProperty(): float
+    {
+        if ($this->discountType === 'student' || $this->discountType === 'senior') {
+            return round($this->subtotal * 0.20, 2);
+        }
+        return 0.00;
+    }
+
+    /**
+     * Total amount computed property (Subtotal - Discount)
+     */
+    public function getTotalProperty(): float
+    {
+        return max(0.00, round($this->subtotal - $this->discountAmount, 2));
     }
 
     /**
@@ -301,7 +343,9 @@ class Pos extends Component
                 paymentMethod: $this->paymentMethod,
                 amountPaid: $this->paymentMethod === 'gcash' ? $total : $tendered,
                 cashierIdentifier: $cashierId,
-                customerName: $this->customerName
+                customerName: $this->customerName,
+                orderType: $this->orderType,
+                discount: $this->discountAmount
             );
 
             // Set completed order for receipt modal display

@@ -8,7 +8,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pb-2 border-bottom">
         <div>
             <h2 class="fw-bold mb-1" style="font-size: 1.6rem; letter-spacing: -0.02em;">Canteen Overview</h2>
-            <p class="text-muted mb-0 small">Real-time daily sales, point-of-sale volume, and inventory stock alerts.</p>
+            <p class="text-muted mb-0 small">Real-time daily sales, point-of-sale volume, and menu stock alerts.</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('pos') }}" class="btn btn-primary d-flex align-items-center gap-2">
@@ -168,20 +168,20 @@
             </div>
         </div>
 
-        <!-- Low Stock Inventory Alert Table -->
+        <!-- Low Stock Menu Alert Table -->
         <div class="col-12 col-lg-7">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="fw-semibold text-dark">Inventory Stock Alerts</div>
-                        <div class="text-muted small" style="font-size: 0.75rem;">Items requiring attention or replenishment (&le; 10 units)</div>
+                        <div class="fw-semibold text-dark">Menu Item Stock Alerts</div>
+                        <div class="text-muted small" style="font-size: 0.75rem;">Menu items requiring attention or replenishment (&le; 10 units)</div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         @if ($lowStockProducts->count() > 0)
                             <span class="badge bg-danger-subtle text-danger">{{ $lowStockProducts->count() }} items</span>
                         @endif
                         <a href="{{ route('products.index') }}" class="btn btn-outline-primary btn-sm py-1 px-2.5" style="font-size: 0.78rem;">
-                            View Inventory &rarr;
+                            View Menu Items &rarr;
                         </a>
                     </div>
                 </div>
@@ -189,7 +189,7 @@
                     @if ($lowStockProducts->isEmpty())
                         <div class="text-center py-5 text-muted small">
                             <i class="bi bi-check2 text-success fs-3 d-block mb-1"></i>
-                            All inventory items are sufficiently stocked.
+                            All menu items are sufficiently stocked.
                         </div>
                     @else
                         <div class="table-responsive">

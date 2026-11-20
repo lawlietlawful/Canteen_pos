@@ -32,7 +32,9 @@ class CheckoutService
         string $paymentMethod,
         float $amountPaid,
         $cashierIdentifier,
-        ?string $customerName = null
+        ?string $customerName = null,
+        string $orderType = 'dine_in',
+        float $discount = 0.00
     ): Order {
         if (empty($items)) {
             throw new Exception("Cart is empty. Please add products before checking out.");
@@ -43,7 +45,7 @@ class CheckoutService
             throw new Exception("Invalid payment method. Only Cash and GCash are accepted.");
         }
 
-        return DB::transaction(function () use ($items, $paymentMethod, $amountPaid, $cashierIdentifier, $customerName) {
+        return DB::transaction(function () use ($items, $paymentMethod, $amountPaid, $cashierIdentifier, $customerName, $orderType, $discount) {
             // 1. Resolve Cashier
             $cashier = User::where('id', $cashierIdentifier)
                 ->orWhere('username', $cashierIdentifier)
@@ -119,8 +121,8 @@ class CheckoutService
             }
 
             $subtotal = round($subtotal, 2);
-            $discount = 0.00;
-            $totalAmount = $subtotal - $discount;
+            $discount = min($subtotal, max(0.00, round((float)$discount, 2)));
+            $totalAmount = round($subtotal - $discount, 2);
 
             // 4. Validate Tendered Amount
             $finalAmountPaid = 0.0;
@@ -151,7 +153,7 @@ class CheckoutService
                 'receipt_no' => $receiptNo,
                 'shift_id'   => $shift->id,
                 'cashier_id' => $cashierEmpId,
-                'order_type' => 'dine_in',
+                'order_type' => in_array($orderType, ['dine_in', 'take_out'], true) ? $orderType : 'dine_in',
                 'subtotal'   => $subtotal,
                 'discount'   => $discount,
                 'status'     => 'completed',
